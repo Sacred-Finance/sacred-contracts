@@ -29,7 +29,7 @@
     "deploy:cfxtest": "yarn build:cfx && cfxtruffle deploy --reset --network cfxtest"
   },
   "devDependencies": {
-    "@openzeppelin/contracts": "^3.1.0",
+    "@openzeppelin/contracts": "^3.4.0",
     "babel-eslint": "^10.1.0",
     "bn-chai": "^1.0.1",
     "chai": "^4.2.0",

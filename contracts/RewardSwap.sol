@@ -7,11 +7,11 @@ import "torn-token/contracts/ENS.sol";
 import "./utils/FloatMath.sol";
 
 /**
-  Let's imagine we have 1M SACRED tokens for anonymity mining to distribute during 1 year (~31536000 seconds).
-  The contract should constantly add liquidity to a pool of claimed rewards to SACRED (REWD/SACRED). At any time user can exchange REWD->SACRED using
-  this pool. The rate depends on current available SACRED liquidity - the more SACRED are withdrawn the worse the swap rate is.
+  Let's imagine we have 1M SRD tokens for anonymity mining to distribute during 1 year (~31536000 seconds).
+  The contract should constantly add liquidity to a pool of claimed rewards to SRD (REWD/SRD). At any time user can exchange REWD->SRD using
+  this pool. The rate depends on current available SRD liquidity - the more SRD are withdrawn the worse the swap rate is.
 
-  The contract starts with some virtual balance liquidity and adds some SACRED tokens every second to the balance. Users will decrease
+  The contract starts with some virtual balance liquidity and adds some SRD tokens every second to the balance. Users will decrease
   this balance by swaps.
 
   Exchange rate can be calculated as following:
@@ -32,7 +32,7 @@ contract RewardSwap is EnsResolve {
   uint256 public tokensSold;
   uint256 public poolWeight;
 
-  event Swap(address indexed recipient, uint256 pSACRED, uint256 SACRED);
+  event Swap(address indexed recipient, uint256 pSRD, uint256 SRD);
   event PoolWeightUpdated(uint256 newWeight);
 
   modifier onlyMiner() {
