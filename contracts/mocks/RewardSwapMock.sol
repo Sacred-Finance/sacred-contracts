@@ -20,7 +20,7 @@ contract RewardSwapMock is RewardSwap {
     timestamp = _timestamp;
   }
 
-  function resolve(bytes32 _addr) public view override returns (address) {
+  function resolve(bytes32 _addr) public pure override returns (address) {
     return address(uint160(uint256(_addr) >> (12 * 8)));
   }
 

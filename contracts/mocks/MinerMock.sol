@@ -17,7 +17,7 @@ contract MinerMock is Miner {
     Rate[] memory _rates
   ) public Miner(_rewardSwap, _governance, _sacredTrees, verifiers, _accountRoot, _rates) {}
 
-  function resolve(bytes32 _addr) public view override returns (address) {
+  function resolve(bytes32 _addr) public pure override returns (address) {
     return address(uint160(uint256(_addr) >> (12 * 8)));
   }
 }

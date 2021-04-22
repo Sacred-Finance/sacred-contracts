@@ -3,12 +3,12 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "torn-token/contracts/ENS.sol";
+import "./utils/FakeCNS.sol";
 import "./utils/OwnableMerkleTree.sol";
 import "./interfaces/ISacredTrees.sol";
 import "./interfaces/IHasher.sol";
 
-contract SacredTrees is ISacredTrees, EnsResolve {
+contract SacredTrees is ISacredTrees, CnsResolve {
   OwnableMerkleTree public immutable depositTree;
   OwnableMerkleTree public immutable withdrawalTree;
   IHasher public immutable hasher;

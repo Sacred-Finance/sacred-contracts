@@ -8,9 +8,9 @@ import "./interfaces/IRewardSwap.sol";
 import "./SacredTrees.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "torn-token/contracts/ENS.sol";
+import "./utils/FakeCNS.sol";
 
-contract Miner is EnsResolve {
+contract Miner is CnsResolve {
   using SafeMath for uint256;
 
   IVerifier public rewardVerifier;

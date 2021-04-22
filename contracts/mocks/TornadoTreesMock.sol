@@ -16,7 +16,7 @@ contract SacredTreesMock is SacredTrees {
     uint32 _levels
   ) public SacredTrees(_operator, resolve(_hasher2), resolve(_hasher3), _levels) {}
 
-  function resolve(bytes32 _addr) public view override returns (address) {
+  function resolve(bytes32 _addr) public pure override returns (address) {
     return address(uint160(uint256(_addr) >> (12 * 8)));
   }
 

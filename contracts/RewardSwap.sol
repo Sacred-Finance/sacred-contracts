@@ -3,23 +3,24 @@
 pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "torn-token/contracts/ENS.sol";
+import "./utils/FakeCNS.sol";
 import "./utils/FloatMath.sol";
 
 /**
   Let's imagine we have 1M SRD tokens for anonymity mining to distribute during 1 year (~31536000 seconds).
-  The contract should constantly add liquidity to a pool of claimed rewards to SRD (REWD/SRD). At any time user can exchange REWD->SRD using
-  this pool. The rate depends on current available SRD liquidity - the more SRD are withdrawn the worse the swap rate is.
+  The contract should constantly add liquidity to a pool of claimed rewards to SRD (Incognito Credits/SRD). 
+  At any time user can exchange Incognito Credits->SRD using this pool. The rate depends on current available 
+  SRD liquidity - the more SRD are withdrawn the worse the swap rate is.
 
-  The contract starts with some virtual balance liquidity and adds some SRD tokens every second to the balance. Users will decrease
-  this balance by swaps.
+  The contract starts with some virtual balance liquidity and adds some SRD tokens every second to the balance. 
+  Users will decrease this balance by swaps.
 
   Exchange rate can be calculated as following:
   BalanceAfter = BalanceBefore * e^(-rewardAmount/poolWeight)
   tokens = BalanceBefore - BalanceAfter
 */
 
-contract RewardSwap is EnsResolve {
+contract RewardSwap is CnsResolve {
   using SafeMath for uint256;
 
   uint256 public constant DURATION = 365 days;
