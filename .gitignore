@@ -6,7 +6,6 @@ coverage.json
 .infura
 .DS_Store
 build
-setup_params
 circuits/*.json
 circuits/*.bin
 .env
