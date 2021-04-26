@@ -84,7 +84,7 @@ async function deposit({ currency, amount }) {
     console.log('Submitting deposit transaction')
     let txReceipt = await sacred
       .deposit(Buffer.from(toHex(deposit.commitment).substr(2), 'hex'))
-      .sendTransaction({ value, from: senderAccount, gas: 2e6, gasPrice: 10, storageLimit: 1000 })
+      .sendTransaction({ value, from: senderAccount })
       .executed()
     console.log('txReceipt: ', txReceipt)
     await printCFXBalance({ address: sacred.address, name: 'Sacred' })
@@ -99,7 +99,7 @@ async function deposit({ currency, amount }) {
       console.log('Minting some test tokens to deposit')
       await erc20
         .mint(senderAccount, tokenAmount)
-        .sendTransaction({ from: senderAccount, gas: 2e6, gasPrice: 10, storageLimit: 1000 })
+        .sendTransaction({ from: senderAccount})
     }
 
     const allowance = await erc20.allowance(senderAccount, sacred.address).call({ from: senderAccount })
@@ -108,7 +108,7 @@ async function deposit({ currency, amount }) {
       console.log('Approving tokens for deposit')
       await erc20
         .approve(sacred.address, tokenAmount)
-        .sendTransaction({ from: senderAccount, gas: 2e6, gasPrice: 10, storageLimit: 1000 })
+        .sendTransaction({ from: senderAccount })
         .executed()
     }
 
@@ -116,7 +116,7 @@ async function deposit({ currency, amount }) {
 
     let txReceipt = await sacred
       .deposit(Buffer.from(toHex(deposit.commitment).substr(2), 'hex'))
-      .sendTransaction({ from: senderAccount, gas: 2e6, gasPrice: 10, storageLimit: 1000 })
+      .sendTransaction({ from: senderAccount })
       .executed()
     console.log('txReceipt: ', txReceipt)
     await printERC20Balance({ address: sacred.address, name: 'Sacred' })
@@ -278,9 +278,6 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
         .sendTransaction({
           from: senderAccount,
           value: refund.toString(),
-          gas: 1.4e7,
-          gasPrice: 10,
-          storageLimit: 1000,
         })
         .executed()
 
@@ -669,7 +666,6 @@ async function main() {
         currency,
         amount,
         recipient: senderAccount,
-        relayerURL: program.relayer,
       })
 
       console.log('\nStart performing DAI deposit-withdraw test')
@@ -683,8 +679,6 @@ async function main() {
         currency,
         amount,
         recipient: senderAccount,
-        refund: '0.02',
-        relayerURL: program.relayer,
       })
     })
   try {
