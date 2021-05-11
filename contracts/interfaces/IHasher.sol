@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 interface IHasher {
   function poseidon(bytes32[2] calldata inputs) external pure returns (bytes32);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 interface IVerifier {
   function verifyProof(bytes calldata proof, uint256[4] calldata input) external view returns (bool);

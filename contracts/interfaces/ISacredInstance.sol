@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 interface ISacredInstance {
   function deposit(bytes32 commitment) external payable;

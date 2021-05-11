@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "./utils/MerkleTreeWithHistory.sol";
@@ -24,6 +24,8 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
   bytes32[] public commitmentHistory;
   IVerifier public verifier;
   ISacredTrees public logger;
+
+  event ChangeOperator(address operator);
 
   struct WithdrawAssetExtData {
     address recipient;
@@ -190,7 +192,9 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
 
   /** @dev operator can change his address */
   function changeOperator(address _newOperator) external onlyOperator {
+    require(_newOperator != address(0), "The operator can not be set to ZERO address");
     operator = _newOperator;
+    emit ChangeOperator(_newOperator);
   }
 
   // -----INTERNAL-------

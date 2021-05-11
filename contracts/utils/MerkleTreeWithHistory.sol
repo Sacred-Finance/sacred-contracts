@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 import "../interfaces/IHasher.sol";
 
 contract MerkleTreeWithHistory {
@@ -130,7 +130,7 @@ contract MerkleTreeWithHistory {
   /**
     @dev Returns the last root
   */
-  function getLastRoot() public view returns (bytes32) {
+  function getLastRoot() external view returns (bytes32) {
     return roots[currentRootIndex];
   }
 }

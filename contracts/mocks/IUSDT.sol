@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.12;
 
 abstract contract ERC20Basic {
   uint256 public _totalSupply;
