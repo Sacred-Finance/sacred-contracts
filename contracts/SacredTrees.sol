@@ -92,6 +92,14 @@ contract SacredTrees is ISacredTrees, CnsResolve {
     return depositTree.nextIndex();
   }
 
+  function depositCommitmentHistory(uint256 start, uint256 end) external view returns (bytes32[] memory) {
+    return depositTree.getCommitmentHistory(start, end);
+  }
+
+  function withdrawalCommitmentHistory(uint256 start, uint256 end) external view returns (bytes32[] memory) {
+    return withdrawalTree.getCommitmentHistory(start, end);
+  }
+
   function blockNumber() public view virtual returns (uint256) {
     return block.number;
   }

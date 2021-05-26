@@ -7,6 +7,10 @@ import "./MerkleTreeWithHistory.sol";
 contract OwnableMerkleTree is Ownable, MerkleTreeWithHistory {
   constructor(uint32 _treeLevels, IHasher _hasher) public MerkleTreeWithHistory(_treeLevels, _hasher) {}
 
+  function insertWithoutStorage(bytes32 _leaf) external onlyOwner returns (uint32 index) {
+    return _insertWithoutStorage(_leaf);
+  }
+
   function insert(bytes32 _leaf) external onlyOwner returns (uint32 index) {
     return _insert(_leaf);
   }

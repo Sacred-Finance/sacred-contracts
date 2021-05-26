@@ -97,19 +97,14 @@ async function deposit({ currency, amount }) {
     const tokenAmount = isLocalRPC ? TOKEN_AMOUNT : fromDecimals({ amount, decimals })
     if (isLocalRPC) {
       console.log('Minting some test tokens to deposit')
-      await erc20
-        .mint(senderAccount, tokenAmount)
-        .sendTransaction({ from: senderAccount})
+      await erc20.mint(senderAccount, tokenAmount).sendTransaction({ from: senderAccount })
     }
 
     const allowance = await erc20.allowance(senderAccount, sacred.address).call({ from: senderAccount })
     console.log('Current allowance is', Drip(allowance).toCFX())
     if (toBN(allowance).lt(toBN(tokenAmount))) {
       console.log('Approving tokens for deposit')
-      await erc20
-        .approve(sacred.address, tokenAmount)
-        .sendTransaction({ from: senderAccount })
-        .executed()
+      await erc20.approve(sacred.address, tokenAmount).sendTransaction({ from: senderAccount }).executed()
     }
 
     console.log('Submitting deposit transaction')

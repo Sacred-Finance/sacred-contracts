@@ -21,7 +21,6 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
   // we store all commitments just to prevent accidental deposits with the same commitment
   mapping(bytes32 => bool) public commitments;
   //
-  bytes32[] public commitmentHistory;
   IVerifier public verifier;
   ISacredTrees public logger;
 
@@ -67,20 +66,6 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
     operator = _operator;
     denomination = _denomination;
     deposited_balance = 0;
-    commitmentHistory = new bytes32[](0);
-  }
-
-  function getCommitmentHistory(uint256 start, uint256 end) external view returns (bytes32[] memory) {
-    start = Math.min(commitmentHistory.length, start);
-    end = Math.min(commitmentHistory.length, end);
-    if (start >= end) {
-      return new bytes32[](0);
-    }
-    bytes32[] memory leaves = new bytes32[](end - start);
-    for (uint256 i = start; i < end; i++) {
-      leaves[i - start] = commitmentHistory[i - start];
-    }
-    return leaves;
   }
 
   /**
@@ -92,7 +77,6 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
 
     uint32 insertedIndex = _insert(_commitment);
     commitments[_commitment] = true;
-    commitmentHistory.push(_commitment);
     _processDeposit();
 
     emit Deposit(_commitment, insertedIndex, block.timestamp);

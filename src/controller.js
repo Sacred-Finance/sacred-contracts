@@ -40,28 +40,40 @@ class Controller {
       .map((e) => toBN(e.returnValues.commitment))
   }
 
-  _fetchDepositDataEvents() {
-    return this._fetchEvents('DepositData')
+  async _fetchDepositLeaves() {
+    return (await this.sacredTreesContract.methods.depositCommitmentHistory(0, 100).call()).map((e) =>
+      toFixedHex(e),
+    )
   }
 
-  _fetchWithdrawalDataEvents() {
-    return this._fetchEvents('WithdrawalData')
+  async _fetchWithdrawalLeaves() {
+    return (await this.sacredTreesContract.methods.withdrawalCommitmentHistory(0, 100).call()).map((e) =>
+      toFixedHex(e),
+    )
   }
 
-  async _fetchEvents(eventName) {
-    const events = await this.sacredTreesContract.getPastEvents(eventName, {
-      fromBlock: 0,
-      toBlock: 'latest',
-    })
-    return events
-      .sort((a, b) => a.returnValues.index - b.returnValues.index)
-      .map((e) => ({
-        instance: toFixedHex(e.returnValues.instance, 20),
-        hash: toFixedHex(e.returnValues.hash),
-        block: Number(e.returnValues.block),
-        index: Number(e.returnValues.index),
-      }))
-  }
+  // _fetchDepositDataEvents() {
+  //   return this._fetchEvents('DepositData')
+  // }
+
+  // _fetchWithdrawalDataEvents() {
+  //   return this._fetchEvents('WithdrawalData')
+  // }
+
+  // async _fetchEvents(eventName) {
+  //   const events = await this.sacredTreesContract.getPastEvents(eventName, {
+  //     fromBlock: 0,
+  //     toBlock: 'latest',
+  //   })
+  //   return events
+  //     .sort((a, b) => a.returnValues.index - b.returnValues.index)
+  //     .map((e) => ({
+  //       instance: toFixedHex(e.returnValues.instance, 20),
+  //       hash: toFixedHex(e.returnValues.hash),
+  //       block: Number(e.returnValues.block),
+  //       index: Number(e.returnValues.index),
+  //     }))
+  // }
 
   _updateTree(tree, element) {
     const oldRoot = tree.root()
@@ -107,29 +119,40 @@ class Controller {
     )
     const newAccount = new Account({ amount: newAmount })
 
-    const depositDataEvents = await this._fetchDepositDataEvents()
-    const depositLeaves = depositDataEvents.map((x) => poseidonHash([x.instance, x.hash, x.block]))
+    // const depositDataEvents = await this._fetchDepositDataEvents()
+    const depositLeaves = await this._fetchDepositLeaves()
+    // depositDataEvents.map((x) => poseidonHash([x.instance, x.hash, x.block]))
     const depositTree = new MerkleTree(this.merkleTreeHeight, depositLeaves, {
       hashFunction: poseidonHash2,
       zeroElement: '18057714445064126197463363025270544038935021370379666668119966501302555028628',
     })
-    const depositItem = depositDataEvents.filter((x) => x.hash === toFixedHex(note.commitment))
-    if (depositItem.length === 0) {
+    const depositLeaf = poseidonHash([
+      toFixedHex(note.instance, 20),
+      toFixedHex(note.commitment),
+      Number(note.depositBlock),
+    ])
+    const depositIndex = depositLeaves.findIndex((x) => x === toFixedHex(depositLeaf))
+    if (depositIndex === -1) {
       throw new Error('The deposits tree does not contain such note commitment')
     }
-    const depositPath = depositTree.path(depositItem[0].index)
+    const depositPath = depositTree.path(depositIndex)
 
-    const withdrawalDataEvents = await this._fetchWithdrawalDataEvents()
-    const withdrawalLeaves = withdrawalDataEvents.map((x) => poseidonHash([x.instance, x.hash, x.block]))
+    // const withdrawalDataEvents = await this._fetchWithdrawalDataEvents()
+    const withdrawalLeaves = await this._fetchWithdrawalLeaves()
     const withdrawalTree = new MerkleTree(this.merkleTreeHeight, withdrawalLeaves, {
       hashFunction: poseidonHash2,
       zeroElement: '18057714445064126197463363025270544038935021370379666668119966501302555028628',
     })
-    const withdrawalItem = withdrawalDataEvents.filter((x) => x.hash === toFixedHex(note.nullifierHash))
-    if (withdrawalItem.length === 0) {
+    const withdrawalLeaf = poseidonHash([
+      toFixedHex(note.instance, 20),
+      toFixedHex(note.nullifierHash),
+      Number(note.withdrawalBlock),
+    ])
+    const withdrawalIndex = withdrawalLeaves.findIndex((x) => x === toFixedHex(withdrawalLeaf))
+    if (withdrawalIndex === -1) {
       throw new Error('The withdrawals tree does not contain such note nullifier')
     }
-    const withdrawalPath = withdrawalTree.path(withdrawalItem[0].index)
+    const withdrawalPath = withdrawalTree.path(withdrawalIndex)
 
     accountCommitments = accountCommitments || (await this._fetchAccountCommitments())
     const accountTree = new MerkleTree(this.merkleTreeHeight, accountCommitments, {

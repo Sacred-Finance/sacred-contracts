@@ -2,6 +2,8 @@
 
 pragma solidity ^0.6.12;
 import "../interfaces/IHasher.sol";
+import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract MerkleTreeWithHistory {
   uint256 public constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -12,6 +14,8 @@ contract MerkleTreeWithHistory {
 
   bytes32[] public filledSubtrees;
   bytes32[] public zeros;
+  bytes32[] public commitmentHistory;
+
   uint32 public currentRootIndex = 0;
   uint32 public nextIndex = 0;
   uint32 public constant ROOT_HISTORY_SIZE = 10;
@@ -35,6 +39,8 @@ contract MerkleTreeWithHistory {
 
     filledSubtrees.push(hashLeftRight(currentZero, currentZero));
     roots[0] = filledSubtrees[_treeLevels];
+
+    commitmentHistory = new bytes32[](0);
   }
 
   /**
@@ -45,6 +51,11 @@ contract MerkleTreeWithHistory {
   }
 
   function _insert(bytes32 _leaf) internal returns (uint32 index) {
+    commitmentHistory.push(_leaf);
+    return _insertWithoutStorage(_leaf);
+  }
+
+  function _insertWithoutStorage(bytes32 _leaf) internal returns (uint32 index) {
     uint32 currentIndex = nextIndex;
     require(currentIndex != uint32(2)**levels, "Merkle tree is full. No more leaves can be added");
     nextIndex = currentIndex + 1;
@@ -132,5 +143,18 @@ contract MerkleTreeWithHistory {
   */
   function getLastRoot() external view returns (bytes32) {
     return roots[currentRootIndex];
+  }
+
+  function getCommitmentHistory(uint256 start, uint256 end) external view returns (bytes32[] memory) {
+    start = Math.min(commitmentHistory.length, start);
+    end = Math.min(commitmentHistory.length, end);
+    if (start >= end) {
+      return new bytes32[](0);
+    }
+    bytes32[] memory leaves = new bytes32[](end - start);
+    for (uint256 i = start; i < end; i++) {
+      leaves[i - start] = commitmentHistory[i - start];
+    }
+    return leaves;
   }
 }
