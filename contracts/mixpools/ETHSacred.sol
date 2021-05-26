@@ -5,16 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./Sacred.sol";
 
-contract ETHSacred is Sacred {
-  constructor(
-    IVerifier _verifier,
-    IHasher _hasher,
-    ISacredTrees _logger,
-    uint256 _denomination,
-    uint32 _merkleTreeHeight,
-    address _operator
-  ) public Sacred(_verifier, _hasher, _logger, _denomination, _merkleTreeHeight, _operator) {}
-
+contract ETHSacredUpgradeable is SacredUpgradeable {
   function _processDeposit() internal virtual override {
     require(msg.value == denomination, "Please send `mixDenomination` ETH along with transaction");
   }

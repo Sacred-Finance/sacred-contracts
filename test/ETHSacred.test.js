@@ -5,7 +5,7 @@ const fs = require('fs')
 const { toBN, randomHex } = require('web3-utils')
 const { takeSnapshot, revertSnapshot } = require('../scripts/ganacheHelper')
 
-const Sacred = artifacts.require('./ETHSacred.sol')
+const Sacred = artifacts.require('ETHSacredUpgradeable')
 const { ETH_AMOUNT, MERKLE_TREE_HEIGHT } = process.env
 
 const websnarkUtils = require('websnark/src/utils')

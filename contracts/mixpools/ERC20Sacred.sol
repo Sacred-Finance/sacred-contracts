@@ -5,10 +5,10 @@ pragma experimental ABIEncoderV2;
 
 import "./Sacred.sol";
 
-contract ERC20Sacred is Sacred {
+contract ERC20SacredUpgradeable is SacredUpgradeable {
   address public token;
 
-  constructor(
+  function initialize(
     IVerifier _verifier,
     IHasher _hasher,
     ISacredTrees _logger,
@@ -16,7 +16,8 @@ contract ERC20Sacred is Sacred {
     uint32 _merkleTreeHeight,
     address _operator,
     address _token
-  ) public Sacred(_verifier, _hasher, _logger, _denomination, _merkleTreeHeight, _operator) {
+  ) public initializer {
+    SacredUpgradeable.initialize(_verifier, _hasher, _logger, _denomination, _merkleTreeHeight, _operator);
     token = _token;
   }
 

@@ -1,6 +1,7 @@
 /* global artifacts */
 require('dotenv').config({ path: '../.env' })
-const ERC20Sacred = artifacts.require('ERC20Sacred')
+const { deployProxy } = require('@openzeppelin/truffle-upgrades')
+const ERC20Sacred = artifacts.require('ERC20SacredUpgradeable')
 const Verifier = artifacts.require('./verifiers/WithdrawAssetVerifier.sol')
 const Logger = artifacts.require('./SacredTrees.sol')
 const hasherContract = artifacts.require('Hasher2')
@@ -22,15 +23,19 @@ module.exports = function (deployer, network, accounts) {
       await tokenInstance.mint(accounts[0], toWei('10000'))
       await confluxTask(deployer, tokenInstance)
     }
-    const sacred = await deployer.deploy(
+
+    const sacred = await deployProxy(
       ERC20Sacred,
-      verifier.address,
-      hasherInstance.address,
-      logger.address,
-      TOKEN_AMOUNT,
-      MERKLE_TREE_HEIGHT,
-      accounts[0],
-      token,
+      [
+        verifier.address,
+        hasherInstance.address,
+        logger.address,
+        TOKEN_AMOUNT,
+        MERKLE_TREE_HEIGHT,
+        accounts[0],
+        token,
+      ],
+      { deployer },
     )
     await logger.setSacredAddresses(sacred.address)
     await confluxTask(deployer, sacred)

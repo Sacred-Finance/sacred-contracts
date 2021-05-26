@@ -5,8 +5,10 @@ pragma experimental ABIEncoderV2;
 
 import "../utils/MerkleTreeWithHistory.sol";
 
-contract MerkleTreeWithHistoryMock is MerkleTreeWithHistory {
-  constructor(uint32 _treeLevels, IHasher _hasher) public MerkleTreeWithHistory(_treeLevels, _hasher) {}
+contract MerkleTreeWithHistoryMock is MerkleTreeWithHistoryUpgradeable {
+  constructor(uint32 _treeLevels, IHasher _hasher) public {
+    MerkleTreeWithHistoryUpgradeable.initialize(_treeLevels, _hasher);
+  }
 
   function insert(bytes32 _leaf) external returns (uint32 index) {
     return _insert(_leaf);

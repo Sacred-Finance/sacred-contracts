@@ -12,9 +12,9 @@
   "scripts": {
     "build": "yarn circuit && truffle compile",
     "build:cfx": "yarn circuit && cfxtruffle compile",
-    "compile": "truffle compile",
+    "compile": "truffle compile --compile-all",
     "coverage": "yarn compile && truffle run coverage",
-    "test": "truffle test",
+    "test": "truffle test --compile-all",
     "test:stacktrace": "yarn test --stacktrace",
     "eslint": "eslint --ext .js --ignore-path .gitignore .",
     "prettier:check": "prettier --check . --config .prettierrc",
@@ -30,6 +30,8 @@
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "@openzeppelin/contracts-upgradeable": "^3.4.0",
+    "@openzeppelin/truffle-upgrades": "^1.7.0",
     "babel-eslint": "^10.1.0",
     "bn-chai": "^1.0.1",
     "chai": "^4.2.0",
@@ -46,7 +48,7 @@
     "solhint-plugin-prettier": "^0.0.4",
     "solidity-coverage": "^0.7.7",
     "torn-token": "^1.0.0",
-    "truffle": "^5.1.29",
+    "truffle": "5.1.40",
     "truffle-flattener": "^1.4.4",
     "truffle-hdwallet-provider": "^1.0.17",
     "truffle-plugin-verify": "^0.3.11"

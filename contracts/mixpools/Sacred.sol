@@ -3,16 +3,16 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "./utils/MerkleTreeWithHistory.sol";
-import "./interfaces/IVerifier.sol";
-import "./interfaces/ISacredTrees.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../utils/MerkleTreeWithHistory.sol";
+import "../interfaces/IVerifier.sol";
+import "../interfaces/ISacredTrees.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./utils/FakeCNS.sol";
+import "../utils/FakeCNS.sol";
 
-abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
-  uint256 public immutable denomination;
+abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, ReentrancyGuardUpgradeable, CnsResolve {
+  uint256 public denomination;
   uint256 public deposited_balance;
 
   using SafeMath for uint256;
@@ -52,14 +52,16 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard, CnsResolve {
     @param _merkleTreeHeight the height of deposits' Merkle Tree
     @param _operator operator address (see operator comment above)
   */
-  constructor(
+  function initialize(
     IVerifier _verifier,
     IHasher _hasher,
     ISacredTrees _logger,
     uint256 _denomination,
     uint32 _merkleTreeHeight,
     address _operator
-  ) public MerkleTreeWithHistory(_merkleTreeHeight, _hasher) {
+  ) public initializer {
+    MerkleTreeWithHistoryUpgradeable.initialize(_merkleTreeHeight, _hasher);
+    __ReentrancyGuard_init();
     require(_denomination > 0, "denomination should be greater than 0");
     verifier = _verifier;
     logger = _logger;

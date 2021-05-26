@@ -4,24 +4,29 @@ pragma solidity ^0.6.12;
 import "../interfaces/IHasher.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-contract MerkleTreeWithHistory {
+contract MerkleTreeWithHistoryUpgradeable is Initializable {
   uint256 public constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint256 public constant ZERO_VALUE = 18057714445064126197463363025270544038935021370379666668119966501302555028628; // = keccak256("sacred") % FIELD_SIZE
 
-  uint32 public immutable levels;
+  uint32 public levels;
   IHasher public hasher; // todo immutable
 
   bytes32[] public filledSubtrees;
   bytes32[] public zeros;
   bytes32[] public commitmentHistory;
 
-  uint32 public currentRootIndex = 0;
-  uint32 public nextIndex = 0;
+  uint32 public currentRootIndex;
+  uint32 public nextIndex;
   uint32 public constant ROOT_HISTORY_SIZE = 10;
   bytes32[ROOT_HISTORY_SIZE] public roots;
 
-  constructor(uint32 _treeLevels, IHasher _hasher) public {
+  function initialize(uint32 _treeLevels, IHasher _hasher) public initializer {
+    currentRootIndex = 0;
+    nextIndex = 0;
+
     require(_treeLevels > 0, "_treeLevels should be greater than zero");
     require(_treeLevels < 32, "_treeLevels should be less than 32");
     levels = _treeLevels;
@@ -145,9 +150,9 @@ contract MerkleTreeWithHistory {
     return roots[currentRootIndex];
   }
 
-  function getCommitmentHistory(uint256 start, uint256 end) external view returns (bytes32[] memory) {
-    start = Math.min(commitmentHistory.length, start);
-    end = Math.min(commitmentHistory.length, end);
+  function getCommitmentHistory(uint256 _start, uint256 _end) external view returns (bytes32[] memory) {
+    uint256 start = Math.min(commitmentHistory.length, _start);
+    uint256 end = Math.min(commitmentHistory.length, _end);
     if (start >= end) {
       return new bytes32[](0);
     }

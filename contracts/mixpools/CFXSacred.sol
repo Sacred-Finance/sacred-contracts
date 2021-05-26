@@ -4,23 +4,12 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "./Sacred.sol";
-import "./conflux/Staking.sol";
+import "../conflux/Staking.sol";
 
-contract CFXSacred is Sacred {
+contract CFXSacredUpgradeable is SacredUpgradeable {
   Staking public constant STAKING = Staking(address(0x0888000000000000000000000000000000000002));
 
   event NotStaking();
-
-  constructor(
-    IVerifier _verifier,
-    IHasher _hasher,
-    ISacredTrees _logger,
-    uint256 _denomination,
-    uint32 _merkleTreeHeight,
-    address _operator
-  ) public payable Sacred(_verifier, _hasher, _logger, _denomination, _merkleTreeHeight, _operator) {
-    STAKING.deposit(address(this).balance);
-  }
 
   modifier claimStaking {
     uint256 staking_balance = STAKING.getStakingBalance(address(this));

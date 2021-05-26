@@ -4,8 +4,10 @@ pragma solidity ^0.6.12;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./MerkleTreeWithHistory.sol";
 
-contract OwnableMerkleTree is Ownable, MerkleTreeWithHistory {
-  constructor(uint32 _treeLevels, IHasher _hasher) public MerkleTreeWithHistory(_treeLevels, _hasher) {}
+contract OwnableMerkleTree is Ownable, MerkleTreeWithHistoryUpgradeable {
+  constructor(uint32 _treeLevels, IHasher _hasher) public {
+    MerkleTreeWithHistoryUpgradeable.initialize(_treeLevels, _hasher);
+  }
 
   function insertWithoutStorage(bytes32 _leaf) external onlyOwner returns (uint32 index) {
     return _insertWithoutStorage(_leaf);
