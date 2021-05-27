@@ -6,6 +6,7 @@ const { toBN } = require('web3-utils')
 const { takeSnapshot, revertSnapshot } = require('../scripts/ganacheHelper')
 
 const Sacred = artifacts.require('ERC20SacredUpgradeable')
+const Register = artifacts.require('Register')
 const BadRecipient = artifacts.require('./BadRecipient.sol')
 const Token = artifacts.require('./ERC20Mock.sol')
 const USDTToken = artifacts.require('./IUSDT.sol')
@@ -67,14 +68,27 @@ contract('ERC20Sacred', (accounts) => {
     //   null,
     //   prefix,
     // )
-    sacred = await Sacred.deployed()
     if (ERC20_TOKEN) {
       token = await Token.at(ERC20_TOKEN)
       usdtToken = await USDTToken.at(ERC20_TOKEN)
     } else {
-      token = await Token.deployed()
+      token = await Token.new()
       await token.mint(sender, tokenDenomination)
     }
+    let register = await Register.deployed()
+
+    sacred = await Sacred.new()
+
+    await sacred.initialize(
+      await register.verifier(),
+      await register.hasher(),
+      await register.logger(),
+      tokenDenomination,
+      levels,
+      accounts[0],
+      token.address,
+    )
+
     badRecipient = await BadRecipient.new()
     snapshotId = await takeSnapshot()
     groth16 = await buildGroth16()

@@ -17,10 +17,9 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
 
   using SafeMath for uint256;
 
-  mapping(bytes32 => bool) public nullifierHashes;
-  // we store all commitments just to prevent accidental deposits with the same commitment
-  mapping(bytes32 => bool) public commitments;
-  //
+  mapping(bytes32 => uint256) public nullifierHashes;
+  mapping(bytes32 => uint256) public commitments;
+
   IVerifier public verifier;
   ISacredTrees public logger;
 
@@ -75,10 +74,11 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
     @param _commitment the note commitment, which is PedersenHash(nullifier + secret)
   */
   function deposit(bytes32 _commitment) public payable nonReentrant {
-    require(!commitments[_commitment], "The commitment has been submitted");
+    require(block.number > 0, "Contact is disabled at the genesis block.");
+    require(commitments[_commitment] == 0, "The commitment has been submitted");
 
     uint32 insertedIndex = _insert(_commitment);
-    commitments[_commitment] = true;
+    commitments[_commitment] = block.number;
     _processDeposit();
 
     emit Deposit(_commitment, insertedIndex, block.timestamp);
@@ -124,15 +124,16 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
     });
     bytes32 extDataHash = keccak248(abi.encode(extData));
 
+    require(block.number > 0, "Contact is disabled at the genesis block.");
     require(_fee <= denomination, "Fee exceeds transfer value");
-    require(!nullifierHashes[_nullifierHash], "The note has been already spent");
+    require(nullifierHashes[_nullifierHash] == 0, "The note has been already spent");
     require(isKnownRoot(_root), "Cannot find your merkle root"); // Make sure to use a recent one
     require(
       verifier.verifyProof(_proof, [uint256(_root), uint256(_nullifierHash), uint256(extDataHash)]),
       "Invalid withdraw proof"
     );
 
-    nullifierHashes[_nullifierHash] = true;
+    nullifierHashes[_nullifierHash] = block.number;
     _processWithdraw(_recipient, _relayer, _fee, _refund);
     emit Withdrawal(_recipient, _nullifierHash, _relayer, _fee);
 
@@ -151,7 +152,7 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
 
   /** @dev whether a note is already spent */
   function isSpent(bytes32 _nullifierHash) public view returns (bool) {
-    return nullifierHashes[_nullifierHash];
+    return nullifierHashes[_nullifierHash] > 0;
   }
 
   /** @dev whether an array of notes is already spent */

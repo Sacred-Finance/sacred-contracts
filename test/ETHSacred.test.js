@@ -5,7 +5,11 @@ const fs = require('fs')
 const { toBN, randomHex } = require('web3-utils')
 const { takeSnapshot, revertSnapshot } = require('../scripts/ganacheHelper')
 
+const Register = artifacts.require('Register')
 const Sacred = artifacts.require('ETHSacredUpgradeable')
+const Proxy = artifacts.require('TransparentUpgradeableProxy')
+const zero_address = '0x0000000000000000000000000000000000000000'
+
 const { ETH_AMOUNT, MERKLE_TREE_HEIGHT } = process.env
 
 const websnarkUtils = require('websnark/src/utils')
@@ -57,6 +61,7 @@ contract('ETHSacred', (accounts) => {
   const operator = accounts[0]
   const levels = MERKLE_TREE_HEIGHT || 16
   const value = ETH_AMOUNT || '1000000000000000000' // 1 ether
+  const pool_name = 'eth-test'
   let snapshotId
   let prefix = 'test'
   let tree
@@ -73,7 +78,20 @@ contract('ETHSacred', (accounts) => {
       hashFunction: poseidonHash2,
       zeroElement: '18057714445064126197463363025270544038935021370379666668119966501302555028628',
     })
-    sacred = await Sacred.deployed()
+    let register = await Register.deployed()
+
+    sacred = await Sacred.new()
+
+    // Use impl.contract.methods.initialize to get call data
+    await sacred.initialize(
+      await register.verifier(),
+      await register.hasher(),
+      await register.logger(),
+      value,
+      levels,
+      accounts[0],
+    )
+
     snapshotId = await takeSnapshot()
     groth16 = await buildGroth16()
     circuit = require('../build/circuits/WithdrawAsset.json')

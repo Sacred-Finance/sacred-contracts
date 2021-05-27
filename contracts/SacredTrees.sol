@@ -15,6 +15,7 @@ contract SacredTrees is ISacredTrees, CnsResolve {
 
   event DepositData(address instance, bytes32 indexed hash, uint256 block, uint256 index);
   event WithdrawalData(address instance, bytes32 indexed hash, uint256 block, uint256 index);
+  event ChangeOperator(address operator);
 
   struct TreeLeaf {
     address instance;
@@ -102,5 +103,12 @@ contract SacredTrees is ISacredTrees, CnsResolve {
 
   function blockNumber() public view virtual returns (uint256) {
     return block.number;
+  }
+
+  /** @dev operator can change his address */
+  function changeOperator(address _newOperator) external onlyOperator {
+    require(_newOperator != address(0), "The operator can not be set to ZERO address");
+    operator = _newOperator;
+    emit ChangeOperator(_newOperator);
   }
 }
