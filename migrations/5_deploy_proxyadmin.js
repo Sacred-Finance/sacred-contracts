@@ -5,6 +5,6 @@ const { confluxTask } = require('./cfx_admin.js')
 module.exports = function (deployer, network, accounts) {
   return deployer.then(async () => {
     const admin = await deployer.deploy(ProxyAdmin)
-    await confluxTask(deployer, admin)
+    await confluxTask(admin, deployer)
   })
 }

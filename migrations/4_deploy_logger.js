@@ -17,6 +17,6 @@ module.exports = function (deployer, network, accounts) {
       hasher3.address,
       MERKLE_TREE_HEIGHT,
     )
-    await confluxTask(deployer, logger)
+    await confluxTask(logger, deployer)
   })
 }

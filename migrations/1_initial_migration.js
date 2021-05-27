@@ -9,6 +9,6 @@ module.exports = async function (deployer) {
     }
     const migration = await deployer.deploy(Migrations)
 
-    await confluxTask(deployer, migration)
+    await confluxTask(migration, deployer)
   })
 }

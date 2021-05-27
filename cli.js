@@ -22,7 +22,7 @@ const { poseidonHash2, getExtWithdrawAssetArgsHash } = require('./src/utils')
 
 const MerkleTree = require('fixed-merkle-tree')
 
-let sacred, circuit, proving_key, groth16, erc20, senderAccount, chainId, networkId
+let sacred, register, circuit, proving_key, groth16, erc20, erc20_decimals, senderAccount, chainId, networkId
 let MERKLE_TREE_HEIGHT, CFX_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY
 let conflux
 
@@ -93,7 +93,7 @@ async function deposit({ currency, amount }) {
     // a token
     await printERC20Balance({ address: sacred.address, name: 'Sacred' })
     await printERC20Balance({ address: senderAccount, name: 'Sender account' })
-    const decimals = isLocalRPC ? 18 : config.cfx_deployments[`netId${chainId}`][currency].decimals
+    const decimals = isLocalRPC ? 18 : erc20_decimals
     const tokenAmount = isLocalRPC ? TOKEN_AMOUNT : fromDecimals({ amount, decimals })
     if (isLocalRPC) {
       console.log('Minting some test tokens to deposit')
@@ -523,13 +523,16 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
   // Initialize from local node
   conflux = new Conflux({ url: rpc })
   await conflux.updateNetworkId()
-  contractJson = require('./build/contracts/CFXSacred.json')
+  contractJson = require('./build/contracts/CFXSacredUpgradeable.json')
   circuit = require('./build/circuits/WithdrawAsset.json')
   proving_key = fs.readFileSync('build/circuits/WithdrawAsset_proving_key.bin').buffer
   MERKLE_TREE_HEIGHT = process.env.MERKLE_TREE_HEIGHT || 20
   CFX_AMOUNT = process.env.CFX_AMOUNT
   TOKEN_AMOUNT = process.env.TOKEN_AMOUNT
   PRIVATE_KEY = process.env.PRIVATE_KEY
+  CFXTEST_REGISTER = process.env.CFXTEST_REGISTER
+  CFXMAIN_REGISTER = process.env.CFXMAIN_REGISTER
+
   if (PRIVATE_KEY) {
     let priv_key = PRIVATE_KEY
     if (!priv_key.startsWith('0x')) priv_key = '0x' + PRIVATE_KEY
@@ -537,8 +540,9 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
   } else {
     console.log('Warning! PRIVATE_KEY not found. Please provide PRIVATE_KEY in .env file if you deposit')
   }
+  registerJson = require('./build/contracts/Register.json')
   erc20ContractJson = require('./build/contracts/ERC20Mock.json')
-  erc20sacredJson = require('./build/contracts/ERC20Sacred.json')
+  erc20sacredJson = require('./build/contracts/ERC20SacredUpgradeable.json')
   // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
   groth16 = await buildGroth16()
   let status = await conflux.getStatus()
@@ -563,12 +567,25 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
     }
   } else {
     try {
-      sacredAddress = config.cfx_deployments[`netId${networkId}`][currency].instanceAddress[amount]
+      let register_addr
+      if (chainId == 1) {
+        register_addr = CFXTEST_REGISTER
+      } else if ((chainId = 1029)) {
+        register_addr = CFXMAIN_REGISTER
+      }
+      register = conflux.Contract({ abi: registerJson.abi, address: register_addr })
+      contract_name = `${amount}-${currency}`
+      console.log(contract_name)
+
+      sacredAddress = await register.pools(contract_name)
+      console.log(sacredAddress)
+
       if (!sacredAddress) {
         throw new Error()
       }
       if (currency !== 'cfx') {
-        tokenAddress = config.cfx_deployments[`netId${networkId}`][currency].tokenAddress
+        sacred = conflux.Contract({ abi: erc20sacredJson.abi, address: sacredAddress })
+        tokenAddress = await sacred.token()
       }
     } catch (e) {
       console.error('There is no such sacred instance, check the currency and amount you provide')
@@ -577,6 +594,7 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
   }
   sacred = conflux.Contract({ abi: contractJson.abi, address: sacredAddress })
   erc20 = currency !== 'cfx' ? conflux.Contract({ abi: erc20ContractJson.abi, address: tokenAddress }) : {}
+  erc20_decimals = currency !== 'cfx' ? await erc20.decimals() : {}
 }
 
 async function main() {
@@ -651,7 +669,7 @@ async function main() {
     .action(async () => {
       console.log('Start performing CFX deposit-withdraw test')
       let currency = 'cfx'
-      let amount = '0.1'
+      let amount = '1'
       await init({ rpc: program.rpc, currency, amount })
       let noteString = await deposit({ currency, amount })
       let parsedNote = parseNote(noteString)
@@ -664,8 +682,8 @@ async function main() {
       })
 
       console.log('\nStart performing DAI deposit-withdraw test')
-      currency = 'dai'
-      amount = '0.1'
+      currency = 'daim'
+      amount = '1'
       await init({ rpc: program.rpc, currency, amount })
       noteString = await deposit({ currency, amount })
       parsedNote = parseNote(noteString)

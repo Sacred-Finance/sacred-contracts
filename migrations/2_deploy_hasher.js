@@ -8,7 +8,7 @@ module.exports = async function (deployer) {
     const hasher2 = await deployer.deploy(Hasher2)
     const hasher3 = await deployer.deploy(Hasher3)
 
-    await confluxTask(deployer, hasher2)
-    await confluxTask(deployer, hasher3)
+    await confluxTask(hasher2, deployer)
+    await confluxTask(hasher3, deployer)
   })
 }

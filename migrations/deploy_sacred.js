@@ -1,70 +1,98 @@
 require('dotenv').config({ path: '../.env' })
+const { MERKLE_TREE_HEIGHT } = process.env
 const { format } = require('js-conflux-sdk')
 
 const ERC20Sacred = artifacts.require('ERC20SacredUpgradeable')
 const CFXSacred = artifacts.require('CFXSacredUpgradeable')
 const Register = artifacts.require('Register')
+const ProxyAdmin = artifacts.require('ProxyAdmin')
 const Proxy = artifacts.require('TransparentUpgradeableProxy')
 const zero_address = '0x0000000000000000000000000000000000000000'
-const { confluxTask } = require('./cfx_admin.js')
+const cip37_zero = (network_id) => format.address(zero_address, network_id)
+const { confluxTask, clearAdmin } = require('./cfx_admin.js')
 
-async function deploySacred(name, token_address, denomination, account, deployer, enforce = false) {
-  const { MERKLE_TREE_HEIGHT } = process.env
+const skip_mode = 0
+const upgrade_mode = 1
+const overwrite_mode = 2
 
-  let register = await Register.deployed()
+async function deployCFXSacredV1(denomination, operator, register, deployer) {
+  let impl = await deployer.deploy(CFXSacred)
+  let calldata = impl.contract.methods
+    .initialize(
+      await register.verifier(),
+      await register.hasher(),
+      await register.logger(),
+      denomination,
+      MERKLE_TREE_HEIGHT,
+      format.hexAddress(operator),
+    )
+    .encodeABI()
+  return { impl, calldata, Contract: CFXSacred }
+}
+
+async function deployERC20SacredV1(hex_token_address, denomination, operator, register, deployer) {
+  let impl = await deployer.deploy(ERC20Sacred)
+  let calldata = impl.contract.methods
+    .initialize(
+      await register.verifier(),
+      await register.hasher(),
+      await register.logger(),
+      denomination,
+      MERKLE_TREE_HEIGHT,
+      format.hexAddress(operator),
+      hex_token_address,
+    )
+    .encodeABI()
+  return { impl, calldata, Contract: ERC20Sacred }
+}
+
+async function deploySacredV1(hex_token_address, denomination, operator, register, deployer) {
+  if (hex_token_address == zero_address) {
+    return await deployCFXSacredV1(denomination, operator, register, deployer)
+  } else {
+    return await deployERC20SacredV1(hex_token_address, denomination, operator, register, deployer)
+  }
+}
+
+async function deploySacred(name, token_address, denomination, account, deployer, mode = skip_mode) {
+  const register = await Register.deployed()
+  token_address = token_address || cip37_zero(deployer.network_id)
   let deployed_address = format.address(await register.pools(name), deployer.network_id)
-  let cfx_zero = format.address(zero_address, deployer.network_id)
+  let is_deployed = deployed_address != cip37_zero(deployer.network_id)
 
-  if (!enforce && deployed_address != cfx_zero) {
+  if (mode == skip_mode && is_deployed) {
     console.log(`${name} has been depolyed at `, deployed_address)
     return
   }
 
-  if (token_address == undefined) {
-    token_address = format.address(zero_address, deployer.network_id)
-  }
+  const { impl, calldata, Contract } = await deploySacredV1(
+    format.hexAddress(token_address),
+    denomination,
+    account,
+    register,
+    deployer,
+  )
 
-  let impl
-  let sacred
+  if (!is_deployed || mode == overwrite_mode) {
+    const proxy = await deployer.deploy(Proxy, impl.address, await register.admin(), calldata)
+    const sacred = await Contract.at(proxy.address)
+    console.log(`Deploy ${name} at `, sacred.address)
 
-  if (token_address == format.address(zero_address, deployer.network_id)) {
-    impl = await deployer.deploy(CFXSacred)
-    let calldata = impl.contract.methods
-      .initialize(
-        await register.verifier(),
-        await register.hasher(),
-        await register.logger(),
-        denomination,
-        MERKLE_TREE_HEIGHT,
-        format.hexAddress(account),
-      )
-      .encodeABI()
-    let proxy = await deployer.deploy(Proxy, impl.address, await register.admin(), calldata)
-    sacred = await CFXSacred.at(proxy.address)
+    await register.registerPool(token_address, denomination, sacred.address, name, mode == overwrite_mode)
+    console.log(`Register ${name} for `, sacred.address)
+
+    await confluxTask(sacred, deployer, { name: `Sacred:${name}` })
+    await clearAdmin(impl.address, deployer)
   } else {
-    impl = await deployer.deploy(ERC20Sacred)
-    let calldata = impl.contract.methods
-      .initialize(
-        await register.verifier(),
-        await register.hasher(),
-        await register.logger(),
-        denomination,
-        MERKLE_TREE_HEIGHT,
-        format.hexAddress(account),
-        format.hexAddress(token_address),
-      )
-      .encodeABI()
+    // The rest case is deployed + upgrade mode
+    const admin = await ProxyAdmin.at(format.address(await register.admin(), deployer.network_id))
 
-    let proxy = await deployer.deploy(Proxy, impl.address, await register.admin(), calldata)
-    sacred = await ERC20Sacred.at(proxy.address)
+    // We only support no call_data mode now
+    await admin.upgrade(deployed_address, impl.address)
+    console.log(`Upgrade ${name} at ${deployed_address} to ${impl.address}`)
+
+    await clearAdmin(impl.address, deployer)
   }
-  console.log(`Deploy ${name} at `, sacred.address)
-
-  await register.registerPool(token_address, denomination, sacred.address, name, enforce)
-
-  console.log(`Register ${name}`)
-
-  await confluxTask(deployer, sacred, `Sacred:${name}`, impl.address)
 }
 
-module.exports = { deploySacred }
+module.exports = { deploySacred, skip_mode, upgrade_mode, overwrite_mode }

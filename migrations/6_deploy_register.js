@@ -22,6 +22,6 @@ module.exports = function (deployer, network, accounts) {
       admin.address,
     )
 
-    await confluxTask(deployer, register)
+    await confluxTask(register, deployer)
   })
 }
