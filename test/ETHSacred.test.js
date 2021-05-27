@@ -84,9 +84,9 @@ contract('ETHSacred', (accounts) => {
 
     // Use impl.contract.methods.initialize to get call data
     await sacred.initialize(
-      await register.verifier(),
-      await register.hasher(),
-      await register.logger(),
+      await register.roles('withdrawAssetVerifier'),
+      await register.roles('hasher2'),
+      await register.roles('logger'),
       value,
       levels,
       accounts[0],

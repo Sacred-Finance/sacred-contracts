@@ -80,9 +80,9 @@ contract('ERC20Sacred', (accounts) => {
     sacred = await Sacred.new()
 
     await sacred.initialize(
-      await register.verifier(),
-      await register.hasher(),
-      await register.logger(),
+      await register.roles('withdrawAssetVerifier'),
+      await register.roles('hasher2'),
+      await register.roles('logger'),
       tokenDenomination,
       levels,
       accounts[0],

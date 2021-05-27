@@ -1,5 +1,7 @@
 /* global artifacts */
 const Migrations = artifacts.require('Migrations')
+const Register = artifacts.require('Register')
+
 const { confluxTask } = require('./cfx_admin.js')
 
 module.exports = async function (deployer) {
@@ -8,7 +10,8 @@ module.exports = async function (deployer) {
       return
     }
     const migration = await deployer.deploy(Migrations)
-
     await confluxTask(migration, deployer)
+    const register = await deployer.deploy(Register)
+    await confluxTask(register, deployer)
   })
 }

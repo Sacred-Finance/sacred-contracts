@@ -19,9 +19,9 @@ async function deployCFXSacredV1(denomination, operator, register, deployer) {
   let impl = await deployer.deploy(CFXSacred)
   let calldata = impl.contract.methods
     .initialize(
-      await register.verifier(),
-      await register.hasher(),
-      await register.logger(),
+      await register.roles('withdrawAssetVerifier'),
+      await register.roles('hasher2'),
+      await register.roles('logger'),
       denomination,
       MERKLE_TREE_HEIGHT,
       format.hexAddress(operator),
@@ -34,9 +34,9 @@ async function deployERC20SacredV1(hex_token_address, denomination, operator, re
   let impl = await deployer.deploy(ERC20Sacred)
   let calldata = impl.contract.methods
     .initialize(
-      await register.verifier(),
-      await register.hasher(),
-      await register.logger(),
+      await register.roles('withdrawAssetVerifier'),
+      await register.roles('hasher2'),
+      await register.roles('logger'),
       denomination,
       MERKLE_TREE_HEIGHT,
       format.hexAddress(operator),
@@ -74,7 +74,7 @@ async function deploySacred(name, token_address, denomination, account, deployer
   )
 
   if (!is_deployed || mode == overwrite_mode) {
-    const proxy = await deployer.deploy(Proxy, impl.address, await register.admin(), calldata)
+    const proxy = await deployer.deploy(Proxy, impl.address, await register.roles('proxyAdmin'), calldata)
     const sacred = await Contract.at(proxy.address)
     console.log(`Deploy ${name} at `, sacred.address)
 
@@ -85,7 +85,7 @@ async function deploySacred(name, token_address, denomination, account, deployer
     await clearAdmin(impl.address, deployer)
   } else {
     // The rest case is deployed + upgrade mode
-    const admin = await ProxyAdmin.at(format.address(await register.admin(), deployer.network_id))
+    const admin = await ProxyAdmin.at(format.address(await register.roles('proxyAdmin'), deployer.network_id))
 
     // We only support no call_data mode now
     await admin.upgrade(deployed_address, impl.address)

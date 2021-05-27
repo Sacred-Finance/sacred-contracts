@@ -15,14 +15,9 @@ contract CFXSacredUpgradeable is SacredUpgradeable {
     uint256 staking_balance = STAKING.getStakingBalance(address(this));
     STAKING.withdraw(staking_balance);
     _;
-    (bool success, ) = address(STAKING).call(
-      abi.encodeWithSelector(
-        0xb6b55f25, /* deposit */
-        address(this).balance
-      )
-    );
-    if (!success) {
-      // Throw an event for warning
+    if (address(this).balance >= 1 ether) {
+      STAKING.deposit(address(this).balance);
+    } else {
       NotStaking();
     }
   }

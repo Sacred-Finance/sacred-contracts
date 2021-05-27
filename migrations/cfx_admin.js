@@ -2,7 +2,7 @@ const { Conflux, format } = require('js-conflux-sdk')
 const { gzip } = require('pako')
 const Announcement = artifacts.require('Announcement')
 
-const suffix = '-v1.0'
+const suffix = '-v1.1'
 const announce_addr = 'cfxtest:aca514ancmbdu9u349u4m7d0u4jjdv83py3muarnv1'
 
 function confluxProvider(deployer) {
