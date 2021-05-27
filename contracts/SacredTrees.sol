@@ -8,7 +8,7 @@ import "./utils/OwnableMerkleTree.sol";
 import "./interfaces/ISacredTrees.sol";
 import "./interfaces/IHasher.sol";
 
-contract SacredTrees is ISacredTrees, CnsResolve {
+contract SacredTrees is ISacredTrees {
   OwnableMerkleTree public immutable depositTree;
   OwnableMerkleTree public immutable withdrawalTree;
   IHasher public immutable hasher;

@@ -8,16 +8,16 @@ import "./interfaces/IRewardSwap.sol";
 import "./SacredTrees.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./utils/FakeCNS.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
-contract Miner is CnsResolve {
+contract Miner is Initializable {
   using SafeMath for uint256;
 
   IVerifier public rewardVerifier;
   IVerifier public withdrawRewardVerifier;
   IVerifier public treeUpdateVerifier;
-  IRewardSwap public immutable rewardSwap;
-  address public immutable governance;
+  IRewardSwap public rewardSwap;
+  address public governance;
   SacredTrees public sacredTrees;
 
   mapping(bytes32 => bool) public accountNullifiers;
@@ -79,7 +79,7 @@ contract Miner is CnsResolve {
   }
 
   struct Rate {
-    bytes32 instance;
+    address instance;
     uint256 value;
   }
 
@@ -88,17 +88,17 @@ contract Miner is CnsResolve {
     _;
   }
 
-  constructor(
-    bytes32 _rewardSwap,
-    bytes32 _governance,
-    bytes32 _sacredTrees,
-    bytes32[3] memory _verifiers,
+  function initialize(
+    address _rewardSwap,
+    address _governance,
+    address _sacredTrees,
+    address[3] memory _verifiers,
     bytes32 _accountRoot,
     Rate[] memory _rates
-  ) public {
-    rewardSwap = IRewardSwap(resolve(_rewardSwap));
-    governance = resolve(_governance);
-    sacredTrees = SacredTrees(resolve(_sacredTrees));
+  ) public initializer {
+    rewardSwap = IRewardSwap(_rewardSwap);
+    governance = _governance;
+    sacredTrees = SacredTrees(_sacredTrees);
 
     // insert empty tree root without incrementing accountCount counter
     accountRoots[0] = _accountRoot;
@@ -106,9 +106,9 @@ contract Miner is CnsResolve {
     _setRates(_rates);
     // prettier-ignore
     _setVerifiers([
-      IVerifier(resolve(_verifiers[0])),
-      IVerifier(resolve(_verifiers[1])),
-      IVerifier(resolve(_verifiers[2]))
+      IVerifier(_verifiers[0]),
+      IVerifier(_verifiers[1]),
+      IVerifier(_verifiers[2])
     ]);
   }
 
@@ -299,7 +299,7 @@ contract Miner is CnsResolve {
   function _setRates(Rate[] memory _rates) internal {
     for (uint256 i = 0; i < _rates.length; i++) {
       require(_rates[i].value < 2**128, "Incorrect rate");
-      address instance = resolve(_rates[i].instance);
+      address instance = _rates[i].instance;
       rates[instance] = _rates[i].value;
       emit RateChanged(instance, _rates[i].value);
     }

@@ -19,7 +19,7 @@ const {
 const { getEncryptionPublicKey } = require('eth-sig-util')
 const Miner = artifacts.require('MinerMock')
 const SacredTrees = artifacts.require('SacredTreesMock')
-const Sacred = artifacts.require('TORNMock')
+const Sacred = artifacts.require('SacredTokenMock')
 const RewardSwap = artifacts.require('RewardSwapMock')
 const RewardVerifier = artifacts.require('RewardVerifier')
 const WithdrawRewardVerifier = artifacts.require('WithdrawRewardVerifier')
@@ -137,10 +137,7 @@ contract('Miner', (accounts) => {
     await sacredTrees.setSacredAddresses(operator)
     const swapExpectedAddr = await getNextAddr(accounts[0], 1)
     const minerExpectedAddr = await getNextAddr(accounts[0], 2)
-    sacred = await Sacred.new(sender, thirtyDays, [
-      { to: swapExpectedAddr, amount: miningCap.toString() },
-      { to: sender, amount: sacredCap.sub(miningCap).toString() },
-    ])
+    sacred = await Sacred.new()
     rewardSwap = await RewardSwap.new(
       sacred.address,
       minerExpectedAddr,
@@ -156,6 +153,7 @@ contract('Miner', (accounts) => {
       toFixedHex(emptyTree.root()),
       [{ instance: sacredAddr, value: RATE.toString() }],
     )
+    await sacred.mint(rewardSwap.address, miningCap.toString())
 
     const depositData = []
     const withdrawalData = []

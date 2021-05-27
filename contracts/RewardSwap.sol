@@ -3,16 +3,17 @@
 pragma solidity ^0.6.12;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./utils/FakeCNS.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "./utils/FloatMath.sol";
 
 /**
   Let's imagine we have 1M SRD tokens for anonymity mining to distribute during 1 year (~31536000 seconds).
-  The contract should constantly add liquidity to a pool of claimed rewards to SRD (Incognito Credits/SRD). 
-  At any time user can exchange Incognito Credits->SRD using this pool. The rate depends on current available 
+  The contract should constantly add liquidity to a pool of claimed rewards to SRD (Incognito Credits/SRD).
+  At any time user can exchange Incognito Credits->SRD using this pool. The rate depends on current available
   SRD liquidity - the more SRD are withdrawn the worse the swap rate is.
 
-  The contract starts with some virtual balance liquidity and adds some SRD tokens every second to the balance. 
+  The contract starts with some virtual balance liquidity and adds some SRD tokens every second to the balance.
   Users will decrease this balance by swaps.
 
   Exchange rate can be calculated as following:
@@ -20,16 +21,16 @@ import "./utils/FloatMath.sol";
   tokens = BalanceBefore - BalanceAfter
 */
 
-contract RewardSwap is CnsResolve {
+contract RewardSwap is OwnableUpgradeable {
   using SafeMath for uint256;
 
   uint256 public constant DURATION = 365 days;
 
-  IERC20 public immutable sacred;
-  address public immutable miner;
-  uint256 public immutable startTimestamp;
-  uint256 public immutable initialLiquidity;
-  uint256 public immutable liquidity;
+  IERC20 public sacred;
+  address public miner;
+  uint256 public startTimestamp;
+  uint256 public initialLiquidity;
+  uint256 public liquidity;
   uint256 public tokensSold;
   uint256 public poolWeight;
 
@@ -41,23 +42,36 @@ contract RewardSwap is CnsResolve {
     _;
   }
 
-  constructor(
-    bytes32 _sacred,
-    bytes32 _miner,
+  modifier launched() {
+    require(startTimestamp > 0, "Swap has not launched");
+    _;
+  }
+
+  function initialize() public initializer {
+    __Ownable_init();
+  }
+
+  function setup(
+    address _sacred,
+    address _miner,
     uint256 _miningCap,
     uint256 _initialLiquidity,
     uint256 _poolWeight
-  ) public {
+  ) public onlyOwner {
     require(_initialLiquidity <= _miningCap, "Initial liquidity should be lower than mining cap");
-    sacred = IERC20(resolve(_sacred));
-    miner = resolve(_miner);
+    require(getTimestamp() > 0, "Can not setup at the genesis block");
+
+    sacred = IERC20(_sacred);
+    miner = _miner;
     initialLiquidity = _initialLiquidity;
     liquidity = _miningCap.sub(_initialLiquidity);
     poolWeight = _poolWeight;
     startTimestamp = getTimestamp();
+
+    renounceOwnership();
   }
 
-  function swap(address _recipient, uint256 _amount) external onlyMiner returns (uint256) {
+  function swap(address _recipient, uint256 _amount) external onlyMiner launched returns (uint256) {
     uint256 tokens = getExpectedReturn(_amount);
     tokensSold += tokens;
     require(sacred.transfer(_recipient, tokens), "transfer failed");
@@ -65,9 +79,6 @@ contract RewardSwap is CnsResolve {
     return tokens;
   }
 
-  /**
-    @dev
-   */
   function getExpectedReturn(uint256 _amount) public view returns (uint256) {
     uint256 oldBalance = sacredVirtualBalance();
     int128 pow = FloatMath.neg(FloatMath.divu(_amount, poolWeight));
@@ -85,7 +96,7 @@ contract RewardSwap is CnsResolve {
     }
   }
 
-  function setPoolWeight(uint256 _newWeight) external onlyMiner {
+  function setPoolWeight(uint256 _newWeight) external onlyMiner launched {
     poolWeight = _newWeight;
     emit PoolWeightUpdated(_newWeight);
   }

@@ -4,7 +4,7 @@ require('chai').use(require('bn-chai')(web3.utils.BN)).use(require('chai-as-prom
 const { toBN } = require('web3-utils')
 const { takeSnapshot, revertSnapshot, mineBlock } = require('../scripts/ganacheHelper')
 const { sacredFormula, reverseSacredFormula } = require('../src/utils')
-const Sacred = artifacts.require('TORNMock')
+const Sacred = artifacts.require('SacredTokenMock')
 const RewardSwap = artifacts.require('RewardSwapMock')
 const sacredConfig = require('torn-token')
 const RLP = require('rlp')
@@ -50,10 +50,7 @@ contract('RewardSwap', (accounts) => {
 
   before(async () => {
     const swapExpectedAddr = await getNextAddr(accounts[0], 1)
-    sacred = await Sacred.new(sender, thirtyDays, [
-      { to: swapExpectedAddr, amount: miningCap.toString() },
-      { to: sender, amount: sacredCap.sub(miningCap).toString() },
-    ])
+    sacred = await Sacred.new()
     rewardSwap = await RewardSwap.new(
       sacred.address,
       sender,
@@ -61,6 +58,7 @@ contract('RewardSwap', (accounts) => {
       initialSacredBalance.toString(),
       poolWeight,
     )
+    await sacred.mint(rewardSwap.address, miningCap.toString())
     yearLiquidity = miningCap.sub(initialSacredBalance)
     amount = toBN(await rewardSwap.poolWeight()).mul(toBN(7)) // 10**10
 

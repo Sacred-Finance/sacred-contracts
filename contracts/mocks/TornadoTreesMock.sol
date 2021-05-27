@@ -11,14 +11,10 @@ contract SacredTreesMock is SacredTrees {
 
   constructor(
     address _operator,
-    bytes32 _hasher2,
-    bytes32 _hasher3,
+    address _hasher2,
+    address _hasher3,
     uint32 _levels
-  ) public SacredTrees(_operator, resolve(_hasher2), resolve(_hasher3), _levels) {}
-
-  function resolve(bytes32 _addr) public pure override returns (address) {
-    return address(uint160(uint256(_addr) >> (12 * 8)));
-  }
+  ) public SacredTrees(_operator, _hasher2, _hasher3, _levels) {}
 
   function setBlockNumber(uint256 _blockNumber) public {
     currentBlock = _blockNumber;

@@ -9,9 +9,8 @@ import "../interfaces/ISacredTrees.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../utils/FakeCNS.sol";
 
-abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, ReentrancyGuardUpgradeable, CnsResolve {
+abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, ReentrancyGuardUpgradeable {
   uint256 public denomination;
   uint256 public deposited_balance;
 
