@@ -95,4 +95,40 @@ async function deploySacred(name, token_address, denomination, account, deployer
   }
 }
 
-module.exports = { deploySacred, skip_mode, upgrade_mode, overwrite_mode }
+async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mode) {
+  const register = await Register.deployed()
+  let deployed_address = format.address(await register.pools(name), deployer.network_id)
+  let is_deployed = deployed_address != cip37_zero(deployer.network_id)
+
+  if (mode == skip_mode && is_deployed) {
+    console.log(`${name} has been depolyed at `, deployed_address)
+    return
+  }
+
+  const impl = await deployer.deploy(Contract)
+
+  if (!is_deployed || mode == overwrite_mode) {
+    const calldata = impl.contract.methods.initialize(...args).encodeABI()
+    const proxy = await deployer.deploy(Proxy, impl.address, await register.roles('proxyAdmin'), calldata)
+    const sacred = await Contract.at(proxy.address)
+    console.log(`Deploy ${name} at `, sacred.address)
+
+    await register.setRole(name, sacred.address)
+    console.log(`Register ${name} for `, sacred.address)
+
+    await confluxTask(sacred, deployer)
+    await clearAdmin(impl.address, deployer)
+  } else {
+    // The rest case is deployed + upgrade mode
+    const admin = await ProxyAdmin.at(format.address(await register.roles('proxyAdmin'), deployer.network_id))
+
+    // We only support no call_data mode now
+    await admin.upgrade(deployed_address, impl.address)
+    console.log(`Upgrade ${name} at ${deployed_address} to ${impl.address}`)
+
+    await clearAdmin(impl.address, deployer)
+  }
+  return await Contract.at(impl.address)
+}
+
+module.exports = { deploySacred, skip_mode, upgrade_mode, overwrite_mode, deployUpgradeable }

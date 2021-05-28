@@ -11,6 +11,7 @@ const crypto = require('crypto')
 const circomlib = require('circomlib')
 const bigInt = snarkjs.bigInt
 const { Conflux, Drip, format } = require('js-conflux-sdk')
+const { getEncryptionPublicKey } = require('eth-sig-util')
 const buildGroth16 = require('websnark/src/groth16')
 const websnarkUtils = require('websnark/src/utils')
 const toBN = format.bigInt
@@ -19,11 +20,36 @@ const { toWei } = require('web3-utils')
 const config = require('./config')
 const program = require('commander')
 const { poseidonHash2, getExtWithdrawAssetArgsHash } = require('./src/utils')
+const Note = require('./src/note')
+const Controller = require('./src/controller')
+const Account = require('./src/account')
+const { fetchLeaves } = require('./src/leaves')
+
+const provingKeys = {
+  rewardCircuit: require('./build/circuits/Reward.json'),
+  withdrawRewardCircuit: require('./build/circuits/WithdrawReward.json'),
+  withdrawAssetCircuit: require('./build/circuits/WithdrawAsset.json'),
+  treeUpdateCircuit: require('./build/circuits/TreeUpdate.json'),
+  rewardProvingKey: fs.readFileSync('./build/circuits/Reward_proving_key.bin').buffer,
+  withdrawRewardProvingKey: fs.readFileSync('./build/circuits/WithdrawReward_proving_key.bin').buffer,
+  WithdrawAssetProvingKey: fs.readFileSync('./build/circuits/WithdrawAsset_proving_key.bin').buffer,
+  treeUpdateProvingKey: fs.readFileSync('./build/circuits/TreeUpdate_proving_key.bin').buffer,
+}
 
 const MerkleTree = require('fixed-merkle-tree')
 
-let sacred, register, circuit, proving_key, groth16, erc20, erc20_decimals, senderAccount, chainId, networkId
-let MERKLE_TREE_HEIGHT, CFX_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY
+let sacred,
+  register,
+  miner,
+  swap,
+  proving_key,
+  groth16,
+  erc20,
+  erc20_decimals,
+  senderAccount,
+  chainId,
+  networkId
+let MERKLE_TREE_HEIGHT, CFX_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY, PUBLIC_KEY, controller
 let conflux
 
 /** Whether we are in a browser or node.js */
@@ -76,17 +102,16 @@ async function deposit({ currency, amount }) {
   const note = toHex(deposit.preimage, 62)
   const noteString = `sacred-${currency}-${amount}-${networkId}-${note}`
   console.log(`Your note: ${noteString}`)
+  let txReceipt
   if (currency === 'cfx') {
-    console.log(senderAccount)
     await printCFXBalance({ address: sacred.address, name: 'Sacred' })
     await printCFXBalance({ address: senderAccount, name: 'Sender account' })
     const value = isLocalRPC ? CFX_AMOUNT : fromDecimals({ amount, decimals: 18 })
     console.log('Submitting deposit transaction')
-    let txReceipt = await sacred
-      .deposit(Buffer.from(toHex(deposit.commitment).substr(2), 'hex'))
+    txReceipt = await sacred
+      .deposit(format.hexBuffer(deposit.commitment))
       .sendTransaction({ value, from: senderAccount })
       .executed()
-    console.log('txReceipt: ', txReceipt)
     await printCFXBalance({ address: sacred.address, name: 'Sacred' })
     await printCFXBalance({ address: senderAccount, name: 'Sender account' })
   } else {
@@ -109,13 +134,22 @@ async function deposit({ currency, amount }) {
 
     console.log('Submitting deposit transaction')
 
-    let txReceipt = await sacred
-      .deposit(Buffer.from(toHex(deposit.commitment).substr(2), 'hex'))
+    txReceipt = await sacred
+      .deposit(format.hexBuffer(deposit.commitment))
       .sendTransaction({ from: senderAccount })
       .executed()
-    console.log('txReceipt: ', txReceipt)
     await printERC20Balance({ address: sacred.address, name: 'Sacred' })
     await printERC20Balance({ address: senderAccount, name: 'Sender account' })
+  }
+
+  if (networkId === 1029 || networkId === 1) {
+    console.log(
+      `View transaction on confluxscan https://${getCurrentNetworkName()}confluxscan.io/transaction/${
+        txReceipt.transactionHash
+      }`,
+    )
+  } else {
+    console.log(`The transaction hash is ${txReceipt.transactionHash}`)
   }
 
   return noteString
@@ -140,7 +174,7 @@ async function generateMerkleProof(deposit) {
   //   .sort((a, b) => Number(a.arguments.leafIndex) - Number(b.arguments.leafIndex)) // Sort events in chronological order
   //   .map(e => e.arguments.commitment)
 
-  const leaves = (await sacred.getCommitmentHistory(0, 100)).map((e) => format.hex(e))
+  const leaves = await fetchLeaves(sacred)
 
   const tree = new MerkleTree(MERKLE_TREE_HEIGHT, leaves, {
     hashFunction: poseidonHash2,
@@ -155,8 +189,8 @@ async function generateMerkleProof(deposit) {
   const root = tree.root()
   const { pathElements, pathIndices } = tree.path(format.uInt(leafIndex))
 
-  const isValidRoot = await sacred.isKnownRoot(Buffer.from(toHex(root).substr(2), 'hex')).call()
-  const isSpent = await sacred.isSpent(Buffer.from(toHex(deposit.nullifierHash).substr(2), 'hex')).call()
+  const isValidRoot = await sacred.isKnownRoot(format.hexBuffer(toHex(root))).call()
+  const isSpent = await sacred.isSpent(format.hexBuffer(deposit.nullifierHash)).call()
   assert(isValidRoot === true, 'Merkle tree is corrupted')
   assert(isSpent === false, 'The note is already spent')
 
@@ -196,30 +230,27 @@ async function generateProof({ deposit, recipient, relayerAddress = null, fee = 
 
   console.log('Generating SNARK proof')
   console.time('Proof time')
-  const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+  const proofData = await websnarkUtils.genWitnessAndProve(
+    groth16,
+    input,
+    provingKeys.withdrawAssetCircuit,
+    proving_key,
+  )
   const { proof } = websnarkUtils.toSolidityInput(proofData)
   console.timeEnd('Proof time')
-  console.log('proof ', proof)
 
   const args = [
-    Buffer.from(toHex(input.root).substr(2), 'hex'),
-    Buffer.from(toHex(input.nullifierHash).substr(2), 'hex'),
+    format.hexBuffer(toHex(input.root)),
+    format.hexBuffer(input.nullifierHash),
     toHex(recipient, 20),
     toHex(relayerAddress, 20),
     toHex(fee),
     toHex(refund),
   ]
 
-  console.log('args ', args)
-
   return { proof: Buffer.from(proof.substr(2), 'hex'), args }
 }
 
-/**
- * Do an CFX withdrawal
- * @param noteString Note to withdraw
- * @param recipient Recipient address
- */
 async function withdraw({ deposit, currency, amount, recipient, relayerURL, refund = '0' }) {
   if (currency === 'cfx' && refund !== '0') {
     throw new Error('The ETH purchase is supposted to be 0 for ETH withdrawals')
@@ -227,43 +258,19 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
   refund = toWei(refund)
   if (relayerURL) {
     throw new Error('Relayer is not supported')
-    /*
-    if (relayerURL.endsWith('.eth')) {
-      throw new Error('ENS name resolving is not supported. Please provide DNS name of the relayer. See instuctions in README.md')
-    }
-    const relayerStatus = await axios.get(relayerURL + '/status')
-    const { relayerAddress, chainId, gasPrices, ethPrices, relayerServiceFee } = relayerStatus.data
-    assert(chainId === await web3.eth.net.getId() || chainId === '*', 'This relay is for different network')
-    console.log('Relay address: ', relayerAddress)
-
-    const decimals = isLocalRPC ? 18 : config.deployments[`chainId${chainId}`][currency].decimals
-    const fee = calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerServiceFee, decimals })
-    if (fee.gt(fromDecimals({ amount, decimals }))) {
-      throw new Error('Too high refund')
-    }
-    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund })
-
-    console.log('Sending withdraw transaction through relay')
-    try {
-      const relay = await axios.post(relayerURL + '/relay', { contract: sacred._address, proof, args })
-      if (chainId === 1 || chainId === 42) {
-        console.log(`Transaction submitted through the relay. View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${relay.data.txHash}`)
-      } else {
-        console.log(`Transaction submitted through the relay. The transaction hash is ${relay.data.txHash}`)
-      }
-
-      const receipt = await waitForTxReceipt({ txHash: relay.data.txHash })
-      console.log('Transaction mined in block', receipt.blockNumber)
-    } catch (e) {
-      if (e.response) {
-        console.error(e.response.data.error)
-      } else {
-        console.error(e.message)
-      }
-    }
-    */
   } else {
     // using private key
+    const depositBlock = await sacred.commitments(format.hexBuffer(deposit.commitment))
+    const withdrawBlock = await sacred.nullifierHashes(format.hexBuffer(deposit.nullifierHash))
+
+    if (format.any(depositBlock) == 0) {
+      throw new Error('Can not fine your note')
+    }
+
+    if (format.any(withdrawBlock) != 0) {
+      throw new Error('Your note has been withdrawled at block ', format.any(withdrawBlock))
+    }
+
     const { proof, args } = await generateProof({ deposit, recipient, refund })
 
     console.log('Submitting withdraw transaction')
@@ -284,13 +291,114 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
         )
       } else {
         console.log(`The transaction hash is ${txReceipt.transactionHash}`)
-        console.log(txReceipt)
       }
     } catch (e) {
       console.log('on transactionHash error', e)
     }
   }
-  console.log('Done')
+}
+
+async function reward({ noteString, account }) {
+  const { deposit } = parseNote(noteString)
+
+  const depositBlock = await sacred.commitments(format.hexBuffer(deposit.commitment))
+  const withdrawBlock = await sacred.nullifierHashes(format.hexBuffer(deposit.nullifierHash))
+
+  if (format.any(depositBlock) == 0) {
+    throw Error('Can not find you note')
+  }
+
+  if (format.any(withdrawBlock) == 0) {
+    throw Error('The note has not been withdrawed can not receive reward.')
+  }
+
+  if (await miner.rewardNullifiers(format.hexBuffer(deposit.nullifierHash))) {
+    throw Error('Reward has been already assigned.')
+  }
+
+  if (await miner.accountNullifiers(format.hexBuffer(toHex(account.nullifierHash)))) {
+    throw Error('Outdated account state')
+  }
+
+  console.log('Your deposit last ', withdrawBlock - depositBlock, ' blocks')
+
+  const note = Note.fromString(
+    noteString,
+    sacred.address,
+    format.hex(depositBlock),
+    format.hex(withdrawBlock),
+  )
+
+  var { proof, args, account } = await controller.reward({ account, note, publicKey: PUBLIC_KEY })
+
+  proof = format.hexBuffer(proof)
+
+  args.rewardNullifier = format.hexBuffer(args.rewardNullifier)
+  args.extDataHash = format.hexBuffer(args.extDataHash)
+  args.withdrawalRoot = format.hexBuffer(args.withdrawalRoot)
+  args.depositRoot = format.hexBuffer(args.depositRoot)
+  args.extData.encryptedAccount = format.hexBuffer(args.extData.encryptedAccount)
+  args.account.inputRoot = format.hexBuffer(args.account.inputRoot)
+  args.account.inputNullifierHash = format.hexBuffer(args.account.inputNullifierHash)
+  args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
+  args.account.outputCommitment = format.hexBuffer(args.account.outputCommitment)
+
+  console.log('Submitting reward transaction')
+
+  var txReceipt = await miner.reward(proof, args).sendTransaction({ from: senderAccount }).executed()
+
+  if (networkId === 1029 || networkId === 1) {
+    console.log(
+      `View transaction on confluxscan https://${getCurrentNetworkName()}confluxscan.io/transaction/${
+        txReceipt.transactionHash
+      }`,
+    )
+  } else {
+    console.log(`The transaction hash is ${txReceipt.transactionHash}`)
+  }
+  console.log('Your current balance is ', account.amount.toString(), ' IC')
+  console.log('Remember your recent account: ', account.encode())
+  return account
+}
+
+async function swapReward({ account, amount, recipient }) {
+  amount = amount || account.amount
+  recipient = recipient || senderAccount
+  recipient = format.hexAddress(recipient)
+  var { proof, args, account } = await controller.withdraw({
+    account,
+    amount,
+    recipient,
+    publicKey: PUBLIC_KEY,
+  })
+
+  proof = format.hexBuffer(proof)
+
+  args.extDataHash = format.hexBuffer(args.extDataHash)
+  args.extData.encryptedAccount = format.hexBuffer(args.extData.encryptedAccount)
+  args.account.inputRoot = format.hexBuffer(args.account.inputRoot)
+  args.account.inputNullifierHash = format.hexBuffer(args.account.inputNullifierHash)
+  args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
+  args.account.outputCommitment = format.hexBuffer(args.account.outputCommitment)
+
+  var txReceipt = await miner.withdraw(proof, args).sendTransaction({ from: senderAccount }).executed()
+
+  console.log('You will get ', Drip(await swap.getExpectedReturn(amount)).toCFX(), ' SRD')
+  console.log('Sending swap tranaction')
+  if (networkId === 1029 || networkId === 1) {
+    console.log(
+      `View transaction on confluxscan https://${getCurrentNetworkName()}confluxscan.io/transaction/${
+        txReceipt.transactionHash
+      }`,
+    )
+  } else {
+    console.log(`The transaction hash is ${txReceipt.transactionHash}`)
+  }
+
+  console.log('Your current balance is ', account.amount.toString(), ' IC')
+  console.log('Remember your recent account: ', account.encode())
+
+  return account
 }
 
 function fromDecimals({ amount, decimals }) {
@@ -518,20 +626,30 @@ async function loadWithdrawalData({ amount, currency, deposit }) {
 /**
  * Init js-conflux-sdk, contracts, and snark
  */
-async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
-  let contractJson, erc20ContractJson, erc20sacredJson, sacredAddress, tokenAddress
+async function init({ rpc, noteChainId, currency = 'cfx', amount = '1' }) {
+  const contractJson = require('./build/contracts/CFXSacredUpgradeable.json')
+  const registerJson = require('./build/contracts/Register.json')
+  const erc20ContractJson = require('./build/contracts/ERC20Mock.json')
+  const erc20sacredJson = require('./build/contracts/ERC20SacredUpgradeable.json')
+  const minerJson = require('./build/contracts/Miner.json')
+  const loggerJson = require('./build/contracts/SacredTrees.json')
+  const swapJson = require('./build/contracts/RewardSwap.json')
+
+  let register_addr
+
   // Initialize from local node
   conflux = new Conflux({ url: rpc })
   await conflux.updateNetworkId()
-  contractJson = require('./build/contracts/CFXSacredUpgradeable.json')
-  circuit = require('./build/circuits/WithdrawAsset.json')
+
+  noteChainId = noteChainId || conflux.networkId
+  if (noteChainId != conflux.networkId) {
+    throw Error('Inconsistent chain id')
+  }
+
   proving_key = fs.readFileSync('build/circuits/WithdrawAsset_proving_key.bin').buffer
   MERKLE_TREE_HEIGHT = process.env.MERKLE_TREE_HEIGHT || 20
-  CFX_AMOUNT = process.env.CFX_AMOUNT
-  TOKEN_AMOUNT = process.env.TOKEN_AMOUNT
   PRIVATE_KEY = process.env.PRIVATE_KEY
-  CFXTEST_REGISTER = process.env.CFXTEST_REGISTER
-  CFXMAIN_REGISTER = process.env.CFXMAIN_REGISTER
+  PUBLIC_KEY = getEncryptionPublicKey(PRIVATE_KEY.substr(2))
 
   if (PRIVATE_KEY) {
     let priv_key = PRIVATE_KEY
@@ -540,9 +658,7 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
   } else {
     console.log('Warning! PRIVATE_KEY not found. Please provide PRIVATE_KEY in .env file if you deposit')
   }
-  registerJson = require('./build/contracts/Register.json')
-  erc20ContractJson = require('./build/contracts/ERC20Mock.json')
-  erc20sacredJson = require('./build/contracts/ERC20SacredUpgradeable.json')
+
   // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
   groth16 = await buildGroth16()
   let status = await conflux.getStatus()
@@ -554,53 +670,53 @@ async function init({ rpc, noteChainId, currency = 'dai', amount = '100' }) {
   networkId = chainId
 
   if (isLocalRPC) {
-    // networkId += 10000 // dirty hack for current cfx-truffle
-    sacredAddress =
-      currency === 'cfx'
-        ? contractJson.networks[networkId].address
-        : erc20sacredJson.networks[networkId].address
-    tokenAddress = currency !== 'cfx' ? erc20ContractJson.networks[networkId].address : null
-    console.log(sacredAddress)
     let senderAccounts = await conflux.provider.call('accounts')
     if (senderAccounts.length > 0) {
       senderAccount = senderAccounts[0]
     }
-  } else {
-    try {
-      let register_addr
-      if (chainId == 1) {
-        register_addr = CFXTEST_REGISTER
-      } else if ((chainId = 1029)) {
-        register_addr = CFXMAIN_REGISTER
-      }
-      register = conflux.Contract({ abi: registerJson.abi, address: register_addr })
-      contract_name = `${amount}-${currency}`
-      console.log(contract_name)
-
-      sacredAddress = await register.pools(contract_name)
-      console.log(sacredAddress)
-
-      if (!sacredAddress) {
-        throw new Error()
-      }
-      if (currency !== 'cfx') {
-        sacred = conflux.Contract({ abi: erc20sacredJson.abi, address: sacredAddress })
-        tokenAddress = await sacred.token()
-      }
-    } catch (e) {
-      console.error('There is no such sacred instance, check the currency and amount you provide')
-      process.exit(1)
-    }
+    register_addr = registerJson.networks[networkId].address
+  } else if (chainId == 1) {
+    register_addr = process.env.CFXTEST_REGISTER
+  } else if ((chainId = 1029)) {
+    register_addr = process.env.CFXMAIN_REGISTER
   }
+
+  register = conflux.Contract({ abi: registerJson.abi, address: register_addr })
+  contract_name = `${amount}-${currency}`
+
+  sacredAddress = await register.pools(contract_name)
+
+  if (format.hexAddress(sacredAddress) == '0x0000000000000000000000000000000000000000') {
+    throw new Error('No Sacred is depolyed')
+  }
+
+  if (currency !== 'cfx') {
+    sacred = conflux.Contract({ abi: erc20sacredJson.abi, address: sacredAddress })
+    tokenAddress = await sacred.token()
+  }
+
   sacred = conflux.Contract({ abi: contractJson.abi, address: sacredAddress })
   erc20 = currency !== 'cfx' ? conflux.Contract({ abi: erc20ContractJson.abi, address: tokenAddress }) : {}
   erc20_decimals = currency !== 'cfx' ? await erc20.decimals() : {}
+
+  const ContractMaker = (abi, address) => conflux.Contract({ abi, address })
+
+  miner = ContractMaker(minerJson.abi, await register.roles('miner'))
+  controller = new Controller({
+    contract: miner,
+    sacredTreesContract: ContractMaker(loggerJson.abi, await register.roles('logger')),
+    merkleTreeHeight: MERKLE_TREE_HEIGHT,
+    provingKeys,
+    ContractMaker,
+  })
+  await controller.init()
+
+  var swapAddr = await register.roles('swap')
+  swap = conflux.Contract({ abi: swapJson.abi, address: swapAddr })
 }
 
 async function main() {
-  program
-    .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:12537')
-    .option('-R, --relayer <URL>', 'Withdraw via relayer')
+  program.option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'https://test.confluxrpc.com/')
   program
     .command('deposit <currency> <amount>')
     .description(
@@ -612,14 +728,37 @@ async function main() {
       await deposit({ currency, amount })
     })
   program
-    .command('withdraw <note> <recipient> [CFX_purchase]')
+    .command('withdraw <note> [recipient] [CFX_purchase]')
     .description(
       'Withdraw a note to a recipient account using relayer or specified private key. You can exchange some of your deposit`s tokens to CFX during the withdrawal by specifing CFX_purchase (e.g. 0.01) to pay for gas in future transactions. Also see the --relayer option.',
     )
     .action(async (noteString, recipient, refund) => {
       const { currency, amount, networkId, deposit } = parseNote(noteString)
       await init({ rpc: program.rpc, noteNetworkId: networkId, currency, amount })
+      recipient = recipient || senderAccount
       await withdraw({ deposit, currency, amount, recipient, refund, relayerURL: program.relayer })
+    })
+  program
+    .command('reward <note> [account]')
+    .description(
+      'Withdraw a note to a recipient account using relayer or specified private key. You can exchange some of your deposit`s tokens to CFX during the withdrawal by specifing CFX_purchase (e.g. 0.01) to pay for gas in future transactions. Also see the --relayer option.',
+    )
+    .action(async (noteString, accountString) => {
+      const { currency, amount, networkId } = parseNote(noteString)
+      await init({ rpc: program.rpc, noteNetworkId: networkId, currency, amount })
+
+      var account = accountString === undefined ? new Account() : Account.decode(accountString)
+
+      await reward({ account, noteString })
+    })
+  program
+    .command('swap <account> [amount] [recipient]')
+    .description('some thing')
+    .action(async (accountString, amount, recipient) => {
+      var account = Account.decode(accountString)
+
+      await init({ rpc: program.rpc, noteNetworkId: 1 })
+      await swapReward({ account, amount, recipient })
     })
   program
     .command('balance <address> [token_address]')
@@ -661,12 +800,26 @@ async function main() {
       console.log('Nullifier   :', withdrawInfo.nullifier)
     })
 */
+  program.command('tmp').action(async () => {
+    let noteString =
+      'sacred-cfx-1-1-0x49563cccd75ae762f3b6826a372858687aee851066948802323a750376a5e5467917551f1b866ba42457ca7dd6689154e10d4ea01873a3ba7e17afdf91fd'
+    let parsedNote = Note.fromString(noteString, undefined, 0, 0)
+    console.log(typeof parsedNote.nullifier)
+    console.log(parsedNote.nullifier)
+    parsedNote = parseNote(noteString)
+    console.log(typeof parsedNote.deposit.nullifier)
+    console.log(parsedNote.deposit.nullifier)
+
+    // console.log(parsedNote)
+  })
   program
     .command('test')
     .description(
       'Perform an automated test. It deposits and withdraws one CFX and one ERC20 note. Uses conflux-rust docker.',
     )
     .action(async () => {
+      let account = new Account()
+
       console.log('Start performing CFX deposit-withdraw test')
       let currency = 'cfx'
       let amount = '1'
@@ -681,6 +834,23 @@ async function main() {
         recipient: senderAccount,
       })
 
+      account = await reward({ account, noteString })
+
+      console.log('Start performing CFX deposit-withdraw test')
+      amount = '10'
+      await init({ rpc: program.rpc, currency, amount })
+      noteString = await deposit({ currency, amount })
+      parsedNote = parseNote(noteString)
+
+      await withdraw({
+        deposit: parsedNote.deposit,
+        currency,
+        amount,
+        recipient: senderAccount,
+      })
+
+      account = await reward({ account, noteString })
+
       console.log('\nStart performing DAI deposit-withdraw test')
       currency = 'daim'
       amount = '1'
@@ -693,6 +863,10 @@ async function main() {
         amount,
         recipient: senderAccount,
       })
+
+      account = await swapReward({ account, amount: 5, recipient: senderAccount })
+      account = await swapReward({ account, amount: 5, recipient: senderAccount })
+      account = await swapReward({ account, recipient: senderAccount })
     })
   try {
     await program.parseAsync(process.argv)

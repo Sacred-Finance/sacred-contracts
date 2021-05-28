@@ -10,15 +10,16 @@ module.exports = function (deployer, network, accounts) {
     if (deployer.network.substr(0, 3) !== 'cfx') {
       return
     }
-    await deploySacred('1-cfx', undefined, CFXtoDrip(1), accounts[0], deployer, overwrite_mode)
+    await deploySacred('1-cfx', undefined, CFXtoDrip(1), accounts[0], deployer)
     await deploySacred('10-cfx', undefined, CFXtoDrip(10), accounts[0], deployer)
     await deploySacred('100-cfx', undefined, CFXtoDrip(100), accounts[0], deployer)
+    await deploySacred('1000-cfx', undefined, CFXtoDrip(1000), accounts[0], deployer)
 
     await deploySacred('1-daim', token_address, CFXtoDrip(1), accounts[0], deployer)
-    await deploySacred('10-daim', token_address, CFXtoDrip(10), accounts[0], deployer)
-    await deploySacred('100-daim', token_address, CFXtoDrip(100), accounts[0], deployer)
+    // await deploySacred('10-daim', token_address, CFXtoDrip(10), accounts[0], deployer)
+    // await deploySacred('100-daim', token_address, CFXtoDrip(100), accounts[0], deployer)
 
-    await deploySacred('1-cfx', undefined, CFXtoDrip(1), accounts[0], deployer, upgrade_mode)
+    // await deploySacred('1-cfx', undefined, CFXtoDrip(1), accounts[0], deployer, upgrade_mode)
   })
 }
 

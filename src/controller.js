@@ -1,4 +1,5 @@
-const { toBN } = require('web3-utils')
+const { toBN, toHex } = require('web3-utils')
+const { format } = require('js-conflux-sdk')
 const Web3 = require('web3')
 const {
   bitsToNumber,
@@ -10,46 +11,50 @@ const {
   packEncryptedMessage,
   RewardArgs,
 } = require('./utils')
+const { methods, address } = require('./adapter')
 const Account = require('./account')
 const MerkleTree = require('fixed-merkle-tree')
 const websnarkUtils = require('websnark/src/utils')
 const buildGroth16 = require('websnark/src/groth16')
+const fetchLeavesJson = require('../build/contracts/IFetchLeaves.json')
+const { fetchLeaves } = require('./leaves')
 
 const web3 = new Web3()
 
 class Controller {
-  constructor({ contract, sacredTreesContract, merkleTreeHeight, provingKeys, groth16 }) {
+  constructor({ contract, sacredTreesContract, merkleTreeHeight, provingKeys, groth16, ContractMaker }) {
     this.merkleTreeHeight = Number(merkleTreeHeight)
     this.provingKeys = provingKeys
     this.contract = contract
     this.sacredTreesContract = sacredTreesContract
     this.groth16 = groth16
+    this.ContractMaker = ContractMaker
   }
 
   async init() {
     this.groth16 = await buildGroth16()
+
+    this.depositTree = this.ContractMaker(
+      fetchLeavesJson.abi,
+      await methods(this.sacredTreesContract).depositTree().call(),
+    )
+    this.withdrawalTree = this.ContractMaker(
+      fetchLeavesJson.abi,
+      await methods(this.sacredTreesContract).withdrawalTree().call(),
+    )
+    this.accountTree = this.ContractMaker(fetchLeavesJson.abi, address(this.contract))
   }
 
   async _fetchAccountCommitments() {
-    const events = await this.contract.getPastEvents('NewAccount', {
-      fromBlock: 0,
-      toBlock: 'latest',
-    })
-    return events
-      .sort((a, b) => a.returnValues.index - b.returnValues.index)
-      .map((e) => toBN(e.returnValues.commitment))
+    return (await fetchLeaves(this.accountTree)).map((e) => toBN(e))
   }
 
   async _fetchDepositLeaves() {
-    return (await this.sacredTreesContract.methods.depositCommitmentHistory(0, 100).call()).map((e) =>
-      toFixedHex(e),
-    )
+    return await fetchLeaves(this.depositTree)
   }
 
   async _fetchWithdrawalLeaves() {
-    return (await this.sacredTreesContract.methods.withdrawalCommitmentHistory(0, 100).call()).map((e) =>
-      toFixedHex(e),
-    )
+    return await fetchLeaves(this.withdrawalTree)
   }
 
   // _fetchDepositDataEvents() {
@@ -110,10 +115,10 @@ class Controller {
   }
 
   async reward({ account, note, publicKey, fee = 0, relayer = 0, accountCommitments = null }) {
-    const rate = await this.contract.methods.rates(note.instance).call()
+    const rate = await methods(this.contract).rates(note.instance).call()
 
     const newAmount = account.amount.add(
-      toBN(rate)
+      toBN(format.hex(rate))
         .mul(toBN(note.withdrawalBlock).sub(toBN(note.depositBlock)))
         .sub(toBN(fee)),
     )

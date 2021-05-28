@@ -16,7 +16,7 @@ contract MerkleTreeWithHistoryUpgradeable is Initializable {
 
   bytes32[] public filledSubtrees;
   bytes32[] public zeros;
-  bytes32[] public commitmentHistory;
+  bytes32[] public leaves;
 
   uint32 public currentRootIndex;
   uint32 public nextIndex;
@@ -45,7 +45,7 @@ contract MerkleTreeWithHistoryUpgradeable is Initializable {
     filledSubtrees.push(hashLeftRight(currentZero, currentZero));
     roots[0] = filledSubtrees[_treeLevels];
 
-    commitmentHistory = new bytes32[](0);
+    leaves = new bytes32[](0);
   }
 
   /**
@@ -56,7 +56,7 @@ contract MerkleTreeWithHistoryUpgradeable is Initializable {
   }
 
   function _insert(bytes32 _leaf) internal returns (uint32 index) {
-    commitmentHistory.push(_leaf);
+    leaves.push(_leaf);
     return _insertWithoutStorage(_leaf);
   }
 
@@ -150,16 +150,16 @@ contract MerkleTreeWithHistoryUpgradeable is Initializable {
     return roots[currentRootIndex];
   }
 
-  function getCommitmentHistory(uint256 _start, uint256 _end) external view returns (bytes32[] memory) {
-    uint256 start = Math.min(commitmentHistory.length, _start);
-    uint256 end = Math.min(commitmentHistory.length, _end);
+  function leafSlice(uint256 _start, uint256 _end) external view returns (bytes32[] memory) {
+    uint256 start = Math.min(leaves.length, _start);
+    uint256 end = Math.min(leaves.length, _end);
     if (start >= end) {
       return new bytes32[](0);
     }
-    bytes32[] memory leaves = new bytes32[](end - start);
+    bytes32[] memory answer = new bytes32[](end - start);
     for (uint256 i = start; i < end; i++) {
-      leaves[i - start] = commitmentHistory[i - start];
+      answer[i - start] = leaves[i - start];
     }
-    return leaves;
+    return answer;
   }
 }

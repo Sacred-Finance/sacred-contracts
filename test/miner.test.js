@@ -168,11 +168,13 @@ contract('Miner', (accounts) => {
     const anotherWeb3 = new AnotherWeb3(web3.currentProvider)
     contract = new anotherWeb3.eth.Contract(miner.abi, miner.address)
     const sacredTreesContract = new anotherWeb3.eth.Contract(sacredTrees.abi, sacredTrees.address)
+    const ContractMaker = (abi, address) => new anotherWeb3.eth.Contract(abi, address)
     controller = new Controller({
       contract,
       sacredTreesContract,
       merkleTreeHeight: levels,
       provingKeys,
+      ContractMaker,
     })
     await controller.init()
     snapshotId = await takeSnapshot()

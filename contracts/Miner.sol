@@ -28,6 +28,8 @@ contract Miner is Initializable {
   uint256 public constant ACCOUNT_ROOT_HISTORY_SIZE = 100;
   bytes32[ACCOUNT_ROOT_HISTORY_SIZE] public accountRoots;
 
+  bytes32[] public leaves;
+
   event NewAccount(bytes32 commitment, bytes32 nullifier, bytes encryptedAccount, uint256 index);
   event RateChanged(address instance, uint256 value);
   event VerifiersUpdated(address reward, address withdraw, address treeUpdate);
@@ -110,6 +112,8 @@ contract Miner is Initializable {
       IVerifier(_verifiers[1]),
       IVerifier(_verifiers[2])
     ]);
+
+    leaves = new bytes32[](0);
   }
 
   function reward(bytes memory _proof, RewardArgs memory _args) public {
@@ -158,6 +162,8 @@ contract Miner is Initializable {
 
     accountNullifiers[_args.account.inputNullifierHash] = true;
     rewardNullifiers[_args.rewardNullifier] = true;
+
+    leaves.push(_args.account.outputCommitment);
     insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
     if (_args.fee > 0) {
       rewardSwap.swap(_args.extData.relayer, _args.fee);
@@ -200,6 +206,7 @@ contract Miner is Initializable {
       "Invalid withdrawal proof"
     );
 
+    leaves.push(_args.account.outputCommitment);
     insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
     accountNullifiers[_args.account.inputNullifierHash] = true;
     // allow submitting noop withdrawals (amount == 0)
@@ -218,6 +225,23 @@ contract Miner is Initializable {
       _args.extData.encryptedAccount,
       accountCount - 1
     );
+  }
+
+  function leafSlice(uint256 _start, uint256 _end) external view returns (bytes32[] memory) {
+    uint256 start = Math.min(leaves.length, _start);
+    uint256 end = Math.min(leaves.length, _end);
+    if (start >= end) {
+      return new bytes32[](0);
+    }
+    bytes32[] memory answer = new bytes32[](end - start);
+    for (uint256 i = start; i < end; i++) {
+      answer[i - start] = leaves[i - start];
+    }
+    return answer;
+  }
+
+  function nextIndex() public view returns (uint32) {
+    return uint32(accountCount);
   }
 
   function setRates(Rate[] memory _rates) external onlyGovernance {

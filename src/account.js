@@ -16,23 +16,31 @@ class Account {
     }
   }
 
-  encrypt(pubkey) {
+  encode() {
     const bytes = Buffer.concat([
       this.amount.toBuffer('be', 31),
       this.secret.toBuffer('be', 31),
       this.nullifier.toBuffer('be', 31),
     ])
-    return encrypt(pubkey, { data: bytes.toString('base64') }, 'x25519-xsalsa20-poly1305')
+    return bytes.toString('base64')
   }
 
-  static decrypt(privkey, data) {
-    const decryptedMessage = decrypt(data, privkey)
-    const buf = Buffer.from(decryptedMessage, 'base64')
+  static decode(message) {
+    const buf = Buffer.from(message, 'base64')
     return new Account({
       amount: toBN('0x' + buf.slice(0, 31).toString('hex')),
       secret: toBN('0x' + buf.slice(31, 62).toString('hex')),
       nullifier: toBN('0x' + buf.slice(62, 93).toString('hex')),
     })
+  }
+
+  encrypt(pubkey) {
+    return encrypt(pubkey, { data: this.encode() }, 'x25519-xsalsa20-poly1305')
+  }
+
+  static decrypt(privkey, data) {
+    const decryptedMessage = decrypt(data, privkey)
+    return Account.decode(decryptedMessage)
   }
 }
 

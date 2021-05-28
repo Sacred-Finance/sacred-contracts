@@ -11,7 +11,7 @@ module.exports = async function (deployer) {
 
     const register = await Register.deployed()
     await register.setRole('hasher2', hasher2.address)
-    await register.setRole('hasher3', hasher2.address)
+    await register.setRole('hasher3', hasher3.address)
 
     await confluxTask(hasher2, deployer)
     await confluxTask(hasher3, deployer)

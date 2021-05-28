@@ -1,5 +1,6 @@
 const { toBN, BN } = require('web3-utils')
 const { randomBN, pedersenHashBuffer, poseidonHash } = require('./utils')
+const { format } = require('js-conflux-sdk')
 
 class Note {
   constructor({ secret, nullifier, netId, amount, currency, depositBlock, withdrawalBlock, instance } = {}) {
@@ -17,6 +18,9 @@ class Note {
     this.currency = currency
     this.depositBlock = toBN(depositBlock)
     this.withdrawalBlock = toBN(withdrawalBlock)
+    if (instance.substr(0, 3) === 'cfx') {
+      instance = format.hexAddress(instance)
+    }
     this.instance = instance || Note.getInstance(currency, amount)
   }
 
