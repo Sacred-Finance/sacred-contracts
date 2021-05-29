@@ -26,9 +26,9 @@ template Reward(levels, zeroLeaf) {
   signal private input outputAmount;
   signal private input outputSecret;
   signal private input outputNullifier;
-  signal         input outputRoot;
-  signal         input outputPathIndices;
-  signal private input outputPathElements[levels];
+  // signal         input outputRoot;
+  // signal         input outputPathIndices;
+  // signal private input outputPathElements[levels];
   signal         input outputCommitment;
 
   signal private input depositBlock;
@@ -89,14 +89,14 @@ template Reward(levels, zeroLeaf) {
   outputHasher.out === outputCommitment;
 
   // Update accounts tree with output account commitment
-  component accountTreeUpdater = MerkleTreeUpdater(levels, zeroLeaf);
-  accountTreeUpdater.oldRoot <== inputRoot;
-  accountTreeUpdater.newRoot <== outputRoot;
-  accountTreeUpdater.leaf <== outputCommitment;
-  accountTreeUpdater.pathIndices <== outputPathIndices;
-  for (var i = 0; i < levels; i++) {
-      accountTreeUpdater.pathElements[i] <== outputPathElements[i];
-  }
+  // component accountTreeUpdater = MerkleTreeUpdater(levels, zeroLeaf);
+  // accountTreeUpdater.oldRoot <== inputRoot;
+  // accountTreeUpdater.newRoot <== outputRoot;
+  // accountTreeUpdater.leaf <== outputCommitment;
+  // accountTreeUpdater.pathIndices <== outputPathIndices;
+  // for (var i = 0; i < levels; i++) {
+  //     accountTreeUpdater.pathElements[i] <== outputPathElements[i];
+  // }
 
   // === check deposit and withdrawal ===
   // Compute sacred.cash commitment and nullifier

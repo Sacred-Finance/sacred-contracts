@@ -20,9 +20,9 @@ template WithdrawReward(levels, zeroLeaf) {
   signal private input outputAmount;
   signal private input outputSecret;
   signal private input outputNullifier;
-  signal         input outputRoot;
-  signal         input outputPathIndices;
-  signal private input outputPathElements[levels];
+  // signal         input outputRoot;
+  // signal         input outputPathIndices;
+  // signal private input outputPathElements[levels];
   signal         input outputCommitment;
 
   // Verify amount invariant
@@ -63,14 +63,14 @@ template WithdrawReward(levels, zeroLeaf) {
   outputHasher.out === outputCommitment;
 
   // Update accounts tree with output account commitment
-  component treeUpdater = MerkleTreeUpdater(levels, zeroLeaf);
-  treeUpdater.oldRoot <== inputRoot;
-  treeUpdater.newRoot <== outputRoot;
-  treeUpdater.leaf <== outputCommitment;
-  treeUpdater.pathIndices <== outputPathIndices;
-  for (var i = 0; i < levels; i++) {
-      treeUpdater.pathElements[i] <== outputPathElements[i];
-  }
+  // component treeUpdater = MerkleTreeUpdater(levels, zeroLeaf);
+  // treeUpdater.oldRoot <== inputRoot;
+  // treeUpdater.newRoot <== outputRoot;
+  // treeUpdater.leaf <== outputCommitment;
+  // treeUpdater.pathIndices <== outputPathIndices;
+  // for (var i = 0; i < levels; i++) {
+  //     treeUpdater.pathElements[i] <== outputPathElements[i];
+  // }
 
   // Add hidden signals to make sure that tampering with recipient or fee will invalidate the snark proof
   // Most likely it is not required, but it's better to stay on the safe side and it only takes 2 constraints

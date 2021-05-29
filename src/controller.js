@@ -42,7 +42,10 @@ class Controller {
       fetchLeavesJson.abi,
       await methods(this.sacredTreesContract).withdrawalTree().call(),
     )
-    this.accountTree = this.ContractMaker(fetchLeavesJson.abi, address(this.contract))
+    this.accountTree = this.ContractMaker(
+      fetchLeavesJson.abi,
+      await methods(this.sacredTreesContract).accountTree().call(),
+    )
   }
 
   async _fetchAccountCommitments() {
@@ -118,7 +121,7 @@ class Controller {
     const rate = await methods(this.contract).rates(note.instance).call()
 
     const newAmount = account.amount.add(
-      toBN(format.hex(rate))
+      toBN(toHex(rate))
         .mul(toBN(note.withdrawalBlock).sub(toBN(note.depositBlock)))
         .sub(toBN(fee)),
     )

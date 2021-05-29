@@ -24,12 +24,6 @@ contract Miner is Initializable {
   mapping(bytes32 => bool) public rewardNullifiers;
   mapping(address => uint256) public rates;
 
-  uint256 public accountCount;
-  uint256 public constant ACCOUNT_ROOT_HISTORY_SIZE = 100;
-  bytes32[ACCOUNT_ROOT_HISTORY_SIZE] public accountRoots;
-
-  bytes32[] public leaves;
-
   event NewAccount(bytes32 commitment, bytes32 nullifier, bytes encryptedAccount, uint256 index);
   event RateChanged(address instance, uint256 value);
   event VerifiersUpdated(address reward, address withdraw, address treeUpdate);
@@ -103,8 +97,6 @@ contract Miner is Initializable {
     sacredTrees = SacredTrees(_sacredTrees);
 
     // insert empty tree root without incrementing accountCount counter
-    accountRoots[0] = _accountRoot;
-
     _setRates(_rates);
     // prettier-ignore
     _setVerifiers([
@@ -112,12 +104,6 @@ contract Miner is Initializable {
       IVerifier(_verifiers[1]),
       IVerifier(_verifiers[2])
     ]);
-
-    leaves = new bytes32[](0);
-  }
-
-  function reward(bytes memory _proof, RewardArgs memory _args) public {
-    reward(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function batchReward(bytes[] calldata _rewardArgs) external {
@@ -129,12 +115,10 @@ contract Miner is Initializable {
 
   function reward(
     bytes memory _proof,
-    RewardArgs memory _args,
-    bytes memory _treeUpdateProof,
-    TreeUpdateArgs memory _treeUpdateArgs
+    RewardArgs memory _args
   ) public {
-    validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
-    sacredTrees.validateRoots(_args.depositRoot, _args.withdrawalRoot);
+    sacredTrees.validateRoots(_args.depositRoot, _args.withdrawalRoot, _args.account.inputRoot);
+    require(!accountNullifiers[_args.account.inputNullifierHash], "Outdated account state");
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
     require(_args.fee < 2**248, "Fee value out of range");
     require(_args.rate == rates[_args.instance] && _args.rate > 0, "Invalid reward rate");
@@ -163,8 +147,7 @@ contract Miner is Initializable {
     accountNullifiers[_args.account.inputNullifierHash] = true;
     rewardNullifiers[_args.rewardNullifier] = true;
 
-    leaves.push(_args.account.outputCommitment);
-    insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
+    sacredTrees.registerAccount(_args.account.outputCommitment);
     if (_args.fee > 0) {
       rewardSwap.swap(_args.extData.relayer, _args.fee);
     }
@@ -173,21 +156,16 @@ contract Miner is Initializable {
       _args.account.outputCommitment,
       _args.account.inputNullifierHash,
       _args.extData.encryptedAccount,
-      accountCount - 1
+      accountCount() - 1
     );
-  }
-
-  function withdraw(bytes memory _proof, WithdrawArgs memory _args) public {
-    withdraw(_proof, _args, new bytes(0), TreeUpdateArgs(0, 0, 0, 0));
   }
 
   function withdraw(
     bytes memory _proof,
-    WithdrawArgs memory _args,
-    bytes memory _treeUpdateProof,
-    TreeUpdateArgs memory _treeUpdateArgs
+    WithdrawArgs memory _args
   ) public {
-    validateAccountUpdate(_args.account, _treeUpdateProof, _treeUpdateArgs);
+    require(sacredTrees.accountTree().isKnownRoot(_args.account.inputRoot), "Incorrect account tree root");
+    require(!accountNullifiers[_args.account.inputNullifierHash], "Outdated account state");
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
     require(_args.amount < 2**248, "Amount value out of range");
     require(
@@ -206,8 +184,8 @@ contract Miner is Initializable {
       "Invalid withdrawal proof"
     );
 
-    leaves.push(_args.account.outputCommitment);
-    insertAccountRoot(_args.account.inputRoot == getLastAccountRoot() ? _args.account.outputRoot : _treeUpdateArgs.newRoot);
+    sacredTrees.registerAccount(_args.account.outputCommitment);
+
     accountNullifiers[_args.account.inputNullifierHash] = true;
     // allow submitting noop withdrawals (amount == 0)
     uint256 amount = _args.amount.sub(_args.extData.fee, "Amount should be greater than fee");
@@ -223,25 +201,8 @@ contract Miner is Initializable {
       _args.account.outputCommitment,
       _args.account.inputNullifierHash,
       _args.extData.encryptedAccount,
-      accountCount - 1
+      accountCount() - 1
     );
-  }
-
-  function leafSlice(uint256 _start, uint256 _end) external view returns (bytes32[] memory) {
-    uint256 start = Math.min(leaves.length, _start);
-    uint256 end = Math.min(leaves.length, _end);
-    if (start >= end) {
-      return new bytes32[](0);
-    }
-    bytes32[] memory answer = new bytes32[](end - start);
-    for (uint256 i = start; i < end; i++) {
-      answer[i - start] = leaves[i];
-    }
-    return answer;
-  }
-
-  function nextIndex() public view returns (uint32) {
-    return uint32(accountCount);
   }
 
   function setRates(Rate[] memory _rates) external onlyGovernance {
@@ -263,17 +224,14 @@ contract Miner is Initializable {
   // ------VIEW-------
 
   /**
-    @dev Whether the root is present in the root history
-    */
-  function isKnownAccountRoot(bytes32 _root, uint256 _index) public view returns (bool) {
-    return _root != 0 && accountRoots[_index % ACCOUNT_ROOT_HISTORY_SIZE] == _root;
-  }
-
-  /**
     @dev Returns the last root
     */
   function getLastAccountRoot() public view returns (bytes32) {
-    return accountRoots[accountCount % ACCOUNT_ROOT_HISTORY_SIZE];
+    return sacredTrees.accountTree().getLastRoot();
+  }
+
+  function accountCount() public view returns (uint256) {
+    return uint256(sacredTrees.accountTree().nextIndex());
   }
 
   // -----INTERNAL-------
@@ -290,7 +248,7 @@ contract Miner is Initializable {
     require(_proof.length > 0, "Outdated account merkle root");
     require(_args.oldRoot == getLastAccountRoot(), "Outdated tree update merkle root");
     require(_args.leaf == _commitment, "Incorrect commitment inserted");
-    require(_args.pathIndices == accountCount, "Incorrect account insert index");
+    require(_args.pathIndices == accountCount(), "Incorrect account insert index");
     require(
       treeUpdateVerifier.verifyProof(
         _proof,
@@ -305,19 +263,16 @@ contract Miner is Initializable {
     bytes memory _treeUpdateProof,
     TreeUpdateArgs memory _treeUpdateArgs
   ) internal view {
-    require(!accountNullifiers[_account.inputNullifierHash], "Outdated account state");
     if (_account.inputRoot != getLastAccountRoot()) {
       // _account.outputPathIndices (= last tree leaf index) is always equal to root index in the history mapping
       // because we always generate a new root for each new leaf
-      require(isKnownAccountRoot(_account.inputRoot, _account.outputPathIndices), "Invalid account root");
+      
+      // Input root has been checked by sacred trees
+      // require(isKnownAccountRoot(_account.inputRoot, _account.outputPathIndices), "Invalid account root");
       validateTreeUpdate(_treeUpdateProof, _treeUpdateArgs, _account.outputCommitment);
     } else {
-      require(_account.outputPathIndices == accountCount, "Incorrect account insert index");
+      require(_account.outputPathIndices == accountCount(), "Incorrect account insert index");
     }
-  }
-
-  function insertAccountRoot(bytes32 _root) internal {
-    accountRoots[++accountCount % ACCOUNT_ROOT_HISTORY_SIZE] = _root;
   }
 
   function _setRates(Rate[] memory _rates) internal {

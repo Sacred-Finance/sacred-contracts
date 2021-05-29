@@ -13,6 +13,8 @@ module.exports = {
       host: '127.0.0.1',
       port: 8545,
       network_id: '*',
+      gas: 9000000,
+      gasPrice: 100
     },
     // You should run a conflux full node in dev mode before activating this network.
     cfxdev: {
@@ -26,6 +28,7 @@ module.exports = {
       url: 'https://test.confluxrpc.com',
       // Put your own keys here. Claim CFX token on testnet by Conflux Portal https://portal.conflux-chain.org/
       privateKeys: ['0x...'],
+      gas: 9000000,
       network_id: '*',
     },
     // coverage: {

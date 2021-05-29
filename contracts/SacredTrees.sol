@@ -11,10 +11,14 @@ import "./interfaces/IHasher.sol";
 contract SacredTrees is ISacredTrees {
   OwnableMerkleTree public immutable depositTree;
   OwnableMerkleTree public immutable withdrawalTree;
+  OwnableMerkleTree public immutable accountTree;
+
   IHasher public immutable hasher;
 
   event DepositData(address instance, bytes32 indexed hash, uint256 block, uint256 index);
   event WithdrawalData(address instance, bytes32 indexed hash, uint256 block, uint256 index);
+  event AccountData(bytes32 indexed hash, uint256 block, uint256 index);
+
   event ChangeOperator(address operator);
 
   struct TreeLeaf {
@@ -49,6 +53,7 @@ contract SacredTrees is ISacredTrees {
     hasher = IHasher(_hasher3);
     depositTree = new OwnableMerkleTree(_levels, IHasher(_hasher2));
     withdrawalTree = new OwnableMerkleTree(_levels, IHasher(_hasher2));
+    accountTree = new OwnableMerkleTree(_levels, IHasher(_hasher2));
   }
 
   function registerDeposit(address _instance, bytes32 _commitment) external override onlySacred {
@@ -63,6 +68,12 @@ contract SacredTrees is ISacredTrees {
     emit WithdrawalData(_instance, _nullifier, blockNumber(), uint256(index));
   }
 
+  function registerAccount(bytes32 _commitment) external override {
+    bytes32 leaf = _commitment;
+    uint32 index = accountTree.insert(leaf);
+    emit AccountData(_commitment, blockNumber(), uint256(index));
+  }
+
   function setSacredAddresses(address sacred) public onlyOperator {
     sacredAddresses[sacred] = true;
   }
@@ -72,9 +83,10 @@ contract SacredTrees is ISacredTrees {
     sacredAddresses[sacred] = false;
   }
 
-  function validateRoots(bytes32 _depositRoot, bytes32 _withdrawalRoot) public view {
+  function validateRoots(bytes32 _depositRoot, bytes32 _withdrawalRoot, bytes32 _accountRoot) public view {
     require(depositTree.isKnownRoot(_depositRoot), "Incorrect deposit tree root");
     require(withdrawalTree.isKnownRoot(_withdrawalRoot), "Incorrect withdrawal tree root");
+    require(accountTree.isKnownRoot(_accountRoot), "Incorrect account tree root");
   }
 
   function depositRoot() external view returns (bytes32) {
