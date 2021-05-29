@@ -14,7 +14,7 @@ module.exports = {
       port: 8545,
       network_id: '*',
       gas: 9000000,
-      gasPrice: 100
+      gasPrice: 100,
     },
     // You should run a conflux full node in dev mode before activating this network.
     cfxdev: {

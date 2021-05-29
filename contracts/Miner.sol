@@ -38,8 +38,8 @@ contract Miner is Initializable {
   struct AccountUpdate {
     bytes32 inputRoot;
     bytes32 inputNullifierHash;
-    bytes32 outputRoot;
-    uint256 outputPathIndices;
+    // bytes32 outputRoot;
+    // uint256 outputPathIndices;
     bytes32 outputCommitment;
   }
 
@@ -89,7 +89,6 @@ contract Miner is Initializable {
     address _governance,
     address _sacredTrees,
     address[3] memory _verifiers,
-    bytes32 _accountRoot,
     Rate[] memory _rates
   ) public initializer {
     rewardSwap = IRewardSwap(_rewardSwap);
@@ -113,10 +112,7 @@ contract Miner is Initializable {
     }
   }
 
-  function reward(
-    bytes memory _proof,
-    RewardArgs memory _args
-  ) public {
+  function reward(bytes memory _proof, RewardArgs memory _args) public {
     sacredTrees.validateRoots(_args.depositRoot, _args.withdrawalRoot, _args.account.inputRoot);
     require(!accountNullifiers[_args.account.inputNullifierHash], "Outdated account state");
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
@@ -134,8 +130,8 @@ contract Miner is Initializable {
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
-          uint256(_args.account.outputRoot),
-          uint256(_args.account.outputPathIndices),
+          // uint256(_args.account.outputRoot),
+          // uint256(_args.account.outputPathIndices),
           uint256(_args.account.outputCommitment),
           uint256(_args.depositRoot),
           uint256(_args.withdrawalRoot)
@@ -160,10 +156,7 @@ contract Miner is Initializable {
     );
   }
 
-  function withdraw(
-    bytes memory _proof,
-    WithdrawArgs memory _args
-  ) public {
+  function withdraw(bytes memory _proof, WithdrawArgs memory _args) public {
     require(sacredTrees.accountTree().isKnownRoot(_args.account.inputRoot), "Incorrect account tree root");
     require(!accountNullifiers[_args.account.inputNullifierHash], "Outdated account state");
     require(_args.extDataHash == keccak248(abi.encode(_args.extData)), "Incorrect external data hash");
@@ -176,8 +169,8 @@ contract Miner is Initializable {
           uint256(_args.extDataHash),
           uint256(_args.account.inputRoot),
           uint256(_args.account.inputNullifierHash),
-          uint256(_args.account.outputRoot),
-          uint256(_args.account.outputPathIndices),
+          // uint256(_args.account.outputRoot),
+          // uint256(_args.account.outputPathIndices),
           uint256(_args.account.outputCommitment)
         ]
       ),
@@ -258,22 +251,22 @@ contract Miner is Initializable {
     );
   }
 
-  function validateAccountUpdate(
-    AccountUpdate memory _account,
-    bytes memory _treeUpdateProof,
-    TreeUpdateArgs memory _treeUpdateArgs
-  ) internal view {
-    if (_account.inputRoot != getLastAccountRoot()) {
-      // _account.outputPathIndices (= last tree leaf index) is always equal to root index in the history mapping
-      // because we always generate a new root for each new leaf
-      
-      // Input root has been checked by sacred trees
-      // require(isKnownAccountRoot(_account.inputRoot, _account.outputPathIndices), "Invalid account root");
-      validateTreeUpdate(_treeUpdateProof, _treeUpdateArgs, _account.outputCommitment);
-    } else {
-      require(_account.outputPathIndices == accountCount(), "Incorrect account insert index");
-    }
-  }
+  // function validateAccountUpdate(
+  //   AccountUpdate memory _account,
+  //   bytes memory _treeUpdateProof,
+  //   TreeUpdateArgs memory _treeUpdateArgs
+  // ) internal view {
+  //   if (_account.inputRoot != getLastAccountRoot()) {
+  //     // _account.outputPathIndices (= last tree leaf index) is always equal to root index in the history mapping
+  //     // because we always generate a new root for each new leaf
+
+  //     // Input root has been checked by sacred trees
+  //     // require(isKnownAccountRoot(_account.inputRoot, _account.outputPathIndices), "Invalid account root");
+  //     validateTreeUpdate(_treeUpdateProof, _treeUpdateArgs, _account.outputCommitment);
+  //   } else {
+  //     require(_account.outputPathIndices == accountCount(), "Incorrect account insert index");
+  //   }
+  // }
 
   function _setRates(Rate[] memory _rates) internal {
     for (uint256 i = 0; i < _rates.length; i++) {

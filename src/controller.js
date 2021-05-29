@@ -141,7 +141,9 @@ class Controller {
     ])
     const depositIndex = depositLeaves.findIndex((x) => x === toFixedHex(depositLeaf))
     if (depositIndex === -1) {
-      throw new Error('The deposits tree does not contain such note commitment. Please check if your note is deposited before enabling Incognito Mining.')
+      throw new Error(
+        'The deposits tree does not contain such note commitment. Please check if your note is deposited before enabling Incognito Mining.',
+      )
     }
     const depositPath = depositTree.path(depositIndex)
 
@@ -173,7 +175,7 @@ class Controller {
     }
     const accountIndex = accountTree.indexOf(account.commitment, (a, b) => a.eq(b))
     const accountPath = accountIndex !== -1 ? accountTree.path(accountIndex) : zeroAccount
-    const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
+    // const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
     const extDataHash = getExtRewardArgsHash({ relayer, encryptedAccount })
@@ -191,7 +193,7 @@ class Controller {
       inputAmount: account.amount,
       inputSecret: account.secret,
       inputNullifier: account.nullifier,
-      inputRoot: accountTreeUpdate.oldRoot,
+      inputRoot: accountTree.root(),
       inputPathElements: accountPath.pathElements,
       inputPathIndices: bitsToNumber(accountPath.pathIndices),
       inputNullifierHash: account.nullifierHash,
@@ -199,9 +201,9 @@ class Controller {
       outputAmount: newAccount.amount,
       outputSecret: newAccount.secret,
       outputNullifier: newAccount.nullifier,
-      outputRoot: accountTreeUpdate.newRoot,
-      outputPathIndices: accountTreeUpdate.pathIndices,
-      outputPathElements: accountTreeUpdate.pathElements,
+      // outputRoot: accountTreeUpdate.newRoot,
+      // outputPathIndices: accountTreeUpdate.pathIndices,
+      // outputPathElements: accountTreeUpdate.pathElements,
       outputCommitment: newAccount.commitment,
 
       depositBlock: note.depositBlock,
@@ -238,8 +240,8 @@ class Controller {
       account: {
         inputRoot: toFixedHex(input.inputRoot),
         inputNullifierHash: toFixedHex(input.inputNullifierHash),
-        outputRoot: toFixedHex(input.outputRoot),
-        outputPathIndices: toFixedHex(input.outputPathIndices),
+        // outputRoot: toFixedHex(input.outputRoot),
+        // outputPathIndices: toFixedHex(input.outputPathIndices),
         outputCommitment: toFixedHex(input.outputCommitment),
       },
     }
@@ -265,7 +267,7 @@ class Controller {
       throw new Error('The accounts tree does not contain such account commitment')
     }
     const accountPath = accountTree.path(accountIndex)
-    const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
+    // const accountTreeUpdate = this._updateTree(accountTree, newAccount.commitment)
 
     const encryptedAccount = packEncryptedMessage(newAccount.encrypt(publicKey))
     const extDataHash = getExtWithdrawRewardArgsHash({ fee, recipient, relayer, encryptedAccount })
@@ -278,16 +280,16 @@ class Controller {
       inputSecret: account.secret,
       inputNullifier: account.nullifier,
       inputNullifierHash: account.nullifierHash,
-      inputRoot: accountTreeUpdate.oldRoot,
+      inputRoot: accountTree.root(),
       inputPathIndices: bitsToNumber(accountPath.pathIndices),
       inputPathElements: accountPath.pathElements,
 
       outputAmount: newAccount.amount,
       outputSecret: newAccount.secret,
       outputNullifier: newAccount.nullifier,
-      outputRoot: accountTreeUpdate.newRoot,
-      outputPathIndices: accountTreeUpdate.pathIndices,
-      outputPathElements: accountTreeUpdate.pathElements,
+      // outputRoot: accountTreeUpdate.newRoot,
+      // outputPathIndices: accountTreeUpdate.pathIndices,
+      // outputPathElements: accountTreeUpdate.pathElements,
       outputCommitment: newAccount.commitment,
     }
 
@@ -311,8 +313,8 @@ class Controller {
       account: {
         inputRoot: toFixedHex(input.inputRoot),
         inputNullifierHash: toFixedHex(input.inputNullifierHash),
-        outputRoot: toFixedHex(input.outputRoot),
-        outputPathIndices: toFixedHex(input.outputPathIndices),
+        // outputRoot: toFixedHex(input.outputRoot),
+        // outputPathIndices: toFixedHex(input.outputPathIndices),
         outputCommitment: toFixedHex(input.outputCommitment),
       },
     }

@@ -8,7 +8,7 @@ interface IVerifier {
   // WithdrawAsset
   function verifyProof(bytes calldata proof, uint256[3] calldata input) external view returns (bool);
 
-  function verifyProof(bytes calldata proof, uint256[7] calldata input) external view returns (bool);
+  function verifyProof(bytes calldata proof, uint256[5] calldata input) external view returns (bool);
 
-  function verifyProof(bytes calldata proof, uint256[12] calldata input) external view returns (bool);
+  function verifyProof(bytes calldata proof, uint256[10] calldata input) external view returns (bool);
 }

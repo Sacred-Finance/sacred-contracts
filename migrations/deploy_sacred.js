@@ -98,7 +98,7 @@ async function deploySacred(name, token_address, denomination, account, deployer
 async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mode) {
   const register = await Register.deployed()
   let deployed_address = format.address(await register.roles(name), deployer.network_id)
-  console.log(deployed_address);
+  console.log(deployed_address)
   let is_deployed = deployed_address != cip37_zero(deployer.network_id)
 
   if (mode == skip_mode && is_deployed) {

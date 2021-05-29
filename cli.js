@@ -596,15 +596,15 @@ async function main() {
     .description(
       'Submit a deposit of specified currency and amount from default cfx account and return the resulting note. The currency is one of (CFX|cUSDT|FC|?). The amount depends on currency, see config.js file.',
     )
-    .action(async (currency, amount,size) => {
+    .action(async (currency, amount, size) => {
       currency = currency.toLowerCase()
       size = size || 1
       await init({ rpc: program.rpc, currency, amount })
-      for(var i=0;i<size;i++){
-        try{
-          console.log("Index: ", i)
+      for (var i = 0; i < size; i++) {
+        try {
+          console.log('Index: ', i)
           await deposit({ currency, amount })
-        }catch(e){
+        } catch (e) {
           console.log(e)
         }
       }

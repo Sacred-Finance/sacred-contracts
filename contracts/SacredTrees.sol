@@ -83,7 +83,11 @@ contract SacredTrees is ISacredTrees {
     sacredAddresses[sacred] = false;
   }
 
-  function validateRoots(bytes32 _depositRoot, bytes32 _withdrawalRoot, bytes32 _accountRoot) public view {
+  function validateRoots(
+    bytes32 _depositRoot,
+    bytes32 _withdrawalRoot,
+    bytes32 _accountRoot
+  ) public view {
     require(depositTree.isKnownRoot(_depositRoot), "Incorrect deposit tree root");
     require(withdrawalTree.isKnownRoot(_withdrawalRoot), "Incorrect withdrawal tree root");
     require(accountTree.isKnownRoot(_accountRoot), "Incorrect account tree root");

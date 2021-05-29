@@ -1,4 +1,4 @@
-const { Conflux, format,Drip } = require('js-conflux-sdk')
+const { Conflux, format, Drip } = require('js-conflux-sdk')
 const { gzip } = require('pako')
 const Announcement = artifacts.require('Announcement')
 

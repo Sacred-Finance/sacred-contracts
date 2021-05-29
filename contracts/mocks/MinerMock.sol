@@ -13,9 +13,8 @@ contract MinerMock is Miner {
     address _governance,
     address _sacredTrees,
     address[3] memory verifiers,
-    bytes32 _accountRoot,
     Rate[] memory _rates
   ) public {
-    Miner.initialize(_rewardSwap, _governance, _sacredTrees, verifiers, _accountRoot, _rates);
+    Miner.initialize(_rewardSwap, _governance, _sacredTrees, verifiers, _rates);
   }
 }

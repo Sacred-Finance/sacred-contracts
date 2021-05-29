@@ -1,6 +1,6 @@
 /* global artifacts */
 const { deploySacred, overwrite_mode, upgrade_mode } = require('./deploy_sacred.js')
-const {CFXtoDrip} = require('./conflux_utils.js')
+const { CFXtoDrip } = require('./conflux_utils.js')
 
 const token_address = 'CFXTEST:TYPE.CONTRACT:ACBA39P65HTM82Y90UJCA50YSKV5R7PDDP0Y1PKHRP'
 

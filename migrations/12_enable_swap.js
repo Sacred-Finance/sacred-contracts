@@ -1,8 +1,7 @@
 /* global artifacts */
-const {CFXtoDrip} = require("./conflux_utils.js")
+const { CFXtoDrip } = require('./conflux_utils.js')
 const Swap = artifacts.require('RewardSwap')
 const Register = artifacts.require('Register')
-
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {

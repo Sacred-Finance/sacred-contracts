@@ -16,8 +16,8 @@ const AccountUpdate = {
   AccountUpdate: {
     inputRoot: 'bytes32',
     inputNullifierHash: 'bytes32',
-    outputRoot: 'bytes32',
-    outputPathIndices: 'uint256',
+    // outputRoot: 'bytes32',
+    // outputPathIndices: 'uint256',
     outputCommitment: 'bytes32',
   },
 }

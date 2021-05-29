@@ -1,9 +1,8 @@
 /* global artifacts */
-const { confluxTask,CFXtoDrip, isZeroAddress } = require('./conflux_utils.js')
+const { confluxTask, CFXtoDrip, isZeroAddress } = require('./conflux_utils.js')
 
 const Register = artifacts.require('Register')
 const SRDToken = artifacts.require('SacredTokenMock')
-
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {
