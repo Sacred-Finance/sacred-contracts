@@ -1,8 +1,9 @@
 /* global artifacts */
-const { deployUpgradeable, overwrite_mode, upgrade_mode, skip_mode } = require('./deploy_sacred.js')
 const MerkleTree = require('fixed-merkle-tree')
-const { poseidonHash2, toFixedHex } = require('../src/utils')
 const { format } = require('js-conflux-sdk')
+
+const { poseidonHash2, toFixedHex } = require('../src/utils')
+const { deployUpgradeable, overwrite_mode, upgrade_mode, skip_mode } = require('./deploy_sacred.js')
 
 const Miner = artifacts.require('Miner')
 const Register = artifacts.require('Register')
@@ -38,6 +39,6 @@ module.exports = async function (deployer, network, accounts) {
       [],
     ]
 
-    await deployUpgradeable('miner', init_args, Miner, deployer, overwrite_mode)
+    await deployUpgradeable('miner', init_args, Miner, deployer, upgrade_mode)
   })
 }

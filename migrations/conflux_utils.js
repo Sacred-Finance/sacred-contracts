@@ -1,9 +1,15 @@
-const { Conflux, format } = require('js-conflux-sdk')
+const { Conflux, format,Drip } = require('js-conflux-sdk')
 const { gzip } = require('pako')
 const Announcement = artifacts.require('Announcement')
 
 const suffix = '-v1.2'
 const announce_addr = 'cfxtest:aca514ancmbdu9u349u4m7d0u4jjdv83py3muarnv1'
+
+const CFXtoDrip = (x) => format.bigUIntHex(Drip.fromCFX(x))
+
+function isZeroAddress(address) {
+  return format.hexAddress(address) == '0x0000000000000000000000000000000000000000'
+}
 
 function confluxProvider(deployer) {
   var network_id = deployer.network_id
@@ -81,4 +87,4 @@ async function registerScan(instance, deployer, options = {}) {
   console.log('Register functions on Scan for ', instance.address)
 }
 
-module.exports = { confluxTask, clearAdmin, registerScan }
+module.exports = { confluxTask, clearAdmin, registerScan, CFXtoDrip, isZeroAddress }

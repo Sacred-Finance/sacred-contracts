@@ -1,6 +1,6 @@
 /* global artifacts */
 const Verifier = artifacts.require('./verifiers/WithdrawAssetVerifier.sol')
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask } = require('./conflux_utils.js')
 const Register = artifacts.require('Register')
 
 module.exports = async function (deployer) {

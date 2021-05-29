@@ -138,7 +138,7 @@ class Controller {
     ])
     const depositIndex = depositLeaves.findIndex((x) => x === toFixedHex(depositLeaf))
     if (depositIndex === -1) {
-      throw new Error('The deposits tree does not contain such note commitment')
+      throw new Error('The deposits tree does not contain such note commitment. Please check if your note is deposited before enabling Incognito Mining.')
     }
     const depositPath = depositTree.path(depositIndex)
 

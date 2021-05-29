@@ -2,7 +2,7 @@
 const Migrations = artifacts.require('Migrations')
 const Register = artifacts.require('Register')
 
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask } = require('./conflux_utils.js')
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {

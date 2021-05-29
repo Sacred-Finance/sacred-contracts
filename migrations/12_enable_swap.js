@@ -1,11 +1,8 @@
 /* global artifacts */
-const SRDToken = artifacts.require('SacredTokenMock')
-const Miner = artifacts.require('Miner')
+const {CFXtoDrip} = require("./conflux_utils.js")
 const Swap = artifacts.require('RewardSwap')
-
 const Register = artifacts.require('Register')
-const { format, Drip } = require('js-conflux-sdk')
-const CFXtoDrip = (x) => format.bigUIntHex(Drip.fromCFX(x))
+
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {

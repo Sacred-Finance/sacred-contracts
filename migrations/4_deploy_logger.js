@@ -1,7 +1,8 @@
 /* global artifacts */
 require('dotenv').config({ path: '../.env' })
-const Logger = artifacts.require('./SacredTrees.sol')
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask } = require('./conflux_utils.js')
+
+const Logger = artifacts.require('SacredTrees')
 const Register = artifacts.require('Register')
 
 module.exports = function (deployer, network, accounts) {

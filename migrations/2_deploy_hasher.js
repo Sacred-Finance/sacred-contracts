@@ -1,7 +1,7 @@
 /* global artifacts */
 const Hasher2 = artifacts.require('Hasher2')
 const Hasher3 = artifacts.require('Hasher3')
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask } = require('./conflux_utils.js')
 const Register = artifacts.require('Register')
 
 module.exports = async function (deployer) {

@@ -9,7 +9,7 @@ const ProxyAdmin = artifacts.require('ProxyAdmin')
 const Proxy = artifacts.require('TransparentUpgradeableProxy')
 const zero_address = '0x0000000000000000000000000000000000000000'
 const cip37_zero = (network_id) => format.address(zero_address, network_id)
-const { confluxTask, clearAdmin } = require('./cfx_admin.js')
+const { confluxTask, clearAdmin } = require('./conflux_utils.js')
 
 const skip_mode = 0
 const upgrade_mode = 1
@@ -97,7 +97,8 @@ async function deploySacred(name, token_address, denomination, account, deployer
 
 async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mode) {
   const register = await Register.deployed()
-  let deployed_address = format.address(await register.pools(name), deployer.network_id)
+  let deployed_address = format.address(await register.roles(name), deployer.network_id)
+  console.log(deployed_address);
   let is_deployed = deployed_address != cip37_zero(deployer.network_id)
 
   if (mode == skip_mode && is_deployed) {

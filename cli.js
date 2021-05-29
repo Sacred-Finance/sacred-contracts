@@ -38,17 +38,8 @@ const provingKeys = {
 
 const MerkleTree = require('fixed-merkle-tree')
 
-let sacred,
-  register,
-  miner,
-  swap,
-  proving_key,
-  groth16,
-  erc20,
-  erc20_decimals,
-  senderAccount,
-  chainId,
-  networkId
+let sacred, register, miner, swap, logger
+let proving_key, groth16, erc20, erc20_decimals, senderAccount, chainId, networkId
 let MERKLE_TREE_HEIGHT, CFX_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY, PUBLIC_KEY, controller
 let conflux
 
@@ -164,16 +155,6 @@ async function deposit({ currency, amount }) {
 async function generateMerkleProof(deposit) {
   // Get all deposit events from smart contract and assemble merkle tree from them
   console.log('Getting current state from sacred contract')
-
-  // const events = await sacred.Deposit(null, null, null).getLogs({
-  //   fromEpoch: 1,
-  //   toEpoch: "latest_state", // change to latest
-  //   // limit: 100,
-  // });
-  // const leaves = events
-  //   .sort((a, b) => Number(a.arguments.leafIndex) - Number(b.arguments.leafIndex)) // Sort events in chronological order
-  //   .map(e => e.arguments.commitment)
-
   const leaves = await fetchLeaves(sacred)
 
   const tree = new MerkleTree(MERKLE_TREE_HEIGHT, leaves, {
@@ -494,59 +475,6 @@ function getCurrentNetworkName() {
   }
 }
 
-/*
-function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerServiceFee, decimals }) {
-  const decimalsPoint = Math.floor(relayerServiceFee) === Number(relayerServiceFee) ?
-    0 :
-    relayerServiceFee.toString().split('.')[1].length
-  const roundDecimal = 10 ** decimalsPoint
-  const total = toBN(fromDecimals({ amount, decimals }))
-  const feePercent = total.mul(toBN(relayerServiceFee * roundDecimal)).div(toBN(roundDecimal * 100))
-  const expense = toBN(toWei(gasPrices.fast.toString(), 'gwei')).mul(toBN(5e5))
-  let desiredFee
-  switch (currency) {
-  case 'eth': {
-    desiredFee = expense.add(feePercent)
-    break
-  }
-  default: {
-    desiredFee = expense.add(toBN(refund))
-      .mul(toBN(10 ** decimals))
-      .div(toBN(ethPrices[currency]))
-    desiredFee = desiredFee.add(feePercent)
-    break
-  }
-  }
-  return desiredFee
-}
-*/
-
-/**
- * Waits for transaction to be mined
- * @param txHash Hash of transaction
- * @param attempts
- * @param delay
- */
-/*
-function waitForTxReceipt({ txHash, attempts = 60, delay = 1000 }) {
-  return new Promise((resolve, reject) => {
-    const checkForTx = async (txHash, retryAttempt = 0) => {
-      const result = await web3.eth.getTransactionReceipt(txHash)
-      if (!result || !result.blockNumber) {
-        if (retryAttempt <= attempts) {
-          setTimeout(() => checkForTx(txHash, retryAttempt + 1), delay)
-        } else {
-          reject(new Error('tx was not mined'))
-        }
-      } else {
-        resolve(result)
-      }
-    }
-    checkForTx(txHash)
-  })
-}
-*/
-
 /**
  * Parses Sacred.cash note
  * @param noteString the note
@@ -567,62 +495,6 @@ function parseNote(noteString) {
   return { currency: match.groups.currency, amount: match.groups.amount, netId, deposit }
 }
 
-/*
-async function loadDepositData({ deposit }) {
-  try {
-    const eventWhenHappened = await sacred.getPastEvents('Deposit', {
-      filter: {
-        commitment: deposit.commitmentHex
-      },
-      fromBlock: 0,
-      toBlock: 'latest'
-    })
-    if (eventWhenHappened.length === 0) {
-      throw new Error('There is no related deposit, the note is invalid')
-    }
-
-    const { timestamp } = eventWhenHappened[0].returnValues
-    const txHash = eventWhenHappened[0].transactionHash
-    const isSpent = await sacred.methods.isSpent(deposit.nullifierHex).call()
-    const receipt = await web3.eth.getTransactionReceipt(txHash)
-
-    return { timestamp, txHash, isSpent, from: receipt.from, commitment: deposit.commitmentHex }
-  } catch (e) {
-    console.error('loadDepositData', e)
-  }
-  return {}
-}
-async function loadWithdrawalData({ amount, currency, deposit }) {
-  try {
-    const events = await await sacred.getPastEvents('Withdrawal', {
-      fromBlock: 0,
-      toBlock: 'latest'
-    })
-
-    const withdrawEvent = events.filter((event) => {
-      return event.returnValues.nullifierHash === deposit.nullifierHex
-    })[0]
-
-    const fee = withdrawEvent.returnValues.fee
-    const decimals = config.deployments[`chainId${chainId}`][currency].decimals
-    const withdrawalAmount = toBN(fromDecimals({ amount, decimals })).sub(
-      toBN(fee)
-    )
-    const { timestamp } = await web3.eth.getBlock(withdrawEvent.blockHash)
-    return {
-      amount: toDecimals(withdrawalAmount, decimals, 9),
-      txHash: withdrawEvent.transactionHash,
-      to: withdrawEvent.returnValues.to,
-      timestamp,
-      nullifier: deposit.nullifierHex,
-      fee: toDecimals(fee, decimals, 9)
-    }
-  } catch (e) {
-    console.error('loadWithdrawalData', e)
-  }
-}
-*/
-
 /**
  * Init js-conflux-sdk, contracts, and snark
  */
@@ -634,6 +506,7 @@ async function init({ rpc, noteChainId, currency = 'cfx', amount = '1' }) {
   const minerJson = require('./build/contracts/Miner.json')
   const loggerJson = require('./build/contracts/SacredTrees.json')
   const swapJson = require('./build/contracts/RewardSwap.json')
+  const loggerTreeJson = require('./build/contracts/OwnableMerkleTree.json')
 
   let register_addr
 
@@ -702,9 +575,10 @@ async function init({ rpc, noteChainId, currency = 'cfx', amount = '1' }) {
   const ContractMaker = (abi, address) => conflux.Contract({ abi, address })
 
   miner = ContractMaker(minerJson.abi, await register.roles('miner'))
+  logger = ContractMaker(loggerJson.abi, await register.roles('logger'))
   controller = new Controller({
     contract: miner,
-    sacredTreesContract: ContractMaker(loggerJson.abi, await register.roles('logger')),
+    sacredTreesContract: logger,
     merkleTreeHeight: MERKLE_TREE_HEIGHT,
     provingKeys,
     ContractMaker,
@@ -718,14 +592,22 @@ async function init({ rpc, noteChainId, currency = 'cfx', amount = '1' }) {
 async function main() {
   program.option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'https://test.confluxrpc.com/')
   program
-    .command('deposit <currency> <amount>')
+    .command('deposit <currency> <amount> [size]')
     .description(
       'Submit a deposit of specified currency and amount from default cfx account and return the resulting note. The currency is one of (CFX|cUSDT|FC|?). The amount depends on currency, see config.js file.',
     )
-    .action(async (currency, amount) => {
+    .action(async (currency, amount,size) => {
       currency = currency.toLowerCase()
+      size = size || 1
       await init({ rpc: program.rpc, currency, amount })
-      await deposit({ currency, amount })
+      for(var i=0;i<size;i++){
+        try{
+          console.log("Index: ", i)
+          await deposit({ currency, amount })
+        }catch(e){
+          console.log(e)
+        }
+      }
     })
   program
     .command('withdraw <note> [recipient] [CFX_purchase]')
@@ -800,18 +682,6 @@ async function main() {
       console.log('Nullifier   :', withdrawInfo.nullifier)
     })
 */
-  program.command('tmp').action(async () => {
-    let noteString =
-      'sacred-cfx-1-1-0x49563cccd75ae762f3b6826a372858687aee851066948802323a750376a5e5467917551f1b866ba42457ca7dd6689154e10d4ea01873a3ba7e17afdf91fd'
-    let parsedNote = Note.fromString(noteString, undefined, 0, 0)
-    console.log(typeof parsedNote.nullifier)
-    console.log(parsedNote.nullifier)
-    parsedNote = parseNote(noteString)
-    console.log(typeof parsedNote.deposit.nullifier)
-    console.log(parsedNote.deposit.nullifier)
-
-    // console.log(parsedNote)
-  })
   program
     .command('test')
     .description(

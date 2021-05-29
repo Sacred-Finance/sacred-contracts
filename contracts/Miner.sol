@@ -235,7 +235,7 @@ contract Miner is Initializable {
     }
     bytes32[] memory answer = new bytes32[](end - start);
     for (uint256 i = start; i < end; i++) {
-      answer[i - start] = leaves[i - start];
+      answer[i - start] = leaves[i];
     }
     return answer;
   }

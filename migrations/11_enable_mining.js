@@ -2,7 +2,7 @@
 const { format } = require('js-conflux-sdk')
 
 const Miner = artifacts.require('Miner')
-const Logger = artifacts.require('./SacredTrees.sol')
+const Logger = artifacts.require('SacredTrees')
 const Register = artifacts.require('Register')
 
 const plans = [

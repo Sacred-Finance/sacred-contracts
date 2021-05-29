@@ -1,6 +1,6 @@
 /* global artifacts */
 const ProxyAdmin = artifacts.require('ProxyAdmin')
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask } = require('./conflux_utils.js')
 const Register = artifacts.require('Register')
 
 module.exports = function (deployer, network, accounts) {

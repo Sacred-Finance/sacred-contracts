@@ -4,16 +4,15 @@ const Verifier1 = artifacts.require('./verifiers/WithdrawRewardVerifier.sol')
 const Verifier2 = artifacts.require('./verifiers/TreeUpdateVerifier.sol')
 
 const { format } = require('js-conflux-sdk')
-const zero_address = '0x0000000000000000000000000000000000000000'
 
-const { confluxTask } = require('./cfx_admin.js')
+const { confluxTask, isZeroAddress } = require('./conflux_utils.js')
 const Register = artifacts.require('Register')
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {
     const register = await Register.deployed()
 
-    if (format.hexAddress(await register.roles('treeUpdateVerifier')) != zero_address) {
+    if (isZeroAddress(await register.roles('treeUpdateVerifier'))) {
       return
     }
 
