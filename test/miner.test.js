@@ -153,6 +153,7 @@ contract('Miner', (accounts) => {
       [{ instance: sacredAddr, value: RATE.toString() }],
     )
     await sacred.mint(rewardSwap.address, miningCap.toString())
+    await sacredTrees.setMiner(miner.address)
 
     const depositData = []
     const withdrawalData = []

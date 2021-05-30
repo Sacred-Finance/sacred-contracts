@@ -6,8 +6,7 @@ const { toBN, randomHex } = require('web3-utils')
 const { takeSnapshot, revertSnapshot } = require('../scripts/ganacheHelper')
 
 const Register = artifacts.require('Register')
-const Sacred = artifacts.require('ETHSacredUpgradeable')
-const Proxy = artifacts.require('TransparentUpgradeableProxy')
+const Sacred = artifacts.require('ETHSacredV1')
 const zero_address = '0x0000000000000000000000000000000000000000'
 
 const { ETH_AMOUNT, MERKLE_TREE_HEIGHT } = process.env
@@ -90,6 +89,7 @@ contract('ETHSacred', (accounts) => {
       value,
       levels,
       accounts[0],
+      zero_address,
     )
 
     snapshotId = await takeSnapshot()

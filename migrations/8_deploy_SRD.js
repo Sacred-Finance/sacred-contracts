@@ -1,5 +1,5 @@
 /* global artifacts */
-const { confluxTask, CFXtoDrip, isZeroAddress } = require('./conflux_utils.js')
+const { confluxTask, CFXtoDrip, isZeroAddress, isDeployed } = require('./conflux_utils.js')
 
 const Register = artifacts.require('Register')
 const SRDToken = artifacts.require('SacredTokenMock')
@@ -11,7 +11,7 @@ module.exports = async function (deployer) {
     }
     const register = await Register.deployed()
 
-    if (isZeroAddress(await register.roles('gov-token'))) {
+    if (!(await isDeployed('gov-token', register))) {
       const token = await deployer.deploy(SRDToken)
       await register.setRole('gov-token', token.address)
       await confluxTask(token, deployer)

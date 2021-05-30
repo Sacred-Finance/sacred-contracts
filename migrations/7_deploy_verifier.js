@@ -5,14 +5,14 @@ const Verifier2 = artifacts.require('./verifiers/TreeUpdateVerifier.sol')
 
 const { format } = require('js-conflux-sdk')
 
-const { confluxTask, isZeroAddress } = require('./conflux_utils.js')
+const { confluxTask, isDeployed } = require('./conflux_utils.js')
 const Register = artifacts.require('Register')
 
 module.exports = async function (deployer) {
   return deployer.then(async () => {
     const register = await Register.deployed()
 
-    if (isZeroAddress(await register.roles('treeUpdateVerifier'))) {
+    if (await isDeployed('treeUpdateVerifier', register)) {
       return
     }
 

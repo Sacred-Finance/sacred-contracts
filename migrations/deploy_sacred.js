@@ -1,15 +1,16 @@
 require('dotenv').config({ path: '../.env' })
 const { MERKLE_TREE_HEIGHT } = process.env
 const { format } = require('js-conflux-sdk')
+const proxyJson = require('../build/contracts/TransparentUpgradeableProxy.json')
 
-const ERC20Sacred = artifacts.require('ERC20SacredUpgradeable')
-const CFXSacred = artifacts.require('CFXSacredUpgradeable')
+const ERC20Sacred = artifacts.require('ERC20SacredV1')
+const CFXSacred = artifacts.require('CFXSacredV1')
 const Register = artifacts.require('Register')
 const ProxyAdmin = artifacts.require('ProxyAdmin')
 const Proxy = artifacts.require('TransparentUpgradeableProxy')
 const zero_address = '0x0000000000000000000000000000000000000000'
 const cip37_zero = (network_id) => format.address(zero_address, network_id)
-const { confluxTask, clearAdmin } = require('./conflux_utils.js')
+const { confluxTask, clearAdmin, registerScan } = require('./conflux_utils.js')
 
 const skip_mode = 0
 const upgrade_mode = 1
@@ -25,6 +26,7 @@ async function deployCFXSacredV1(denomination, operator, register, deployer) {
       denomination,
       MERKLE_TREE_HEIGHT,
       format.hexAddress(operator),
+      zero_address,
     )
     .encodeABI()
   return { impl, calldata, Contract: CFXSacred }
@@ -82,6 +84,8 @@ async function deploySacred(name, token_address, denomination, account, deployer
     console.log(`Register ${name} for `, sacred.address)
 
     await confluxTask(sacred, deployer, { name: `Sacred:${name}` })
+
+    await registerScan(impl, deployer, { name: `Sacred:${name}(impl)`, abi: [] })
     await clearAdmin(impl.address, deployer)
   } else {
     // The rest case is deployed + upgrade mode
@@ -91,6 +95,7 @@ async function deploySacred(name, token_address, denomination, account, deployer
     await admin.upgrade(deployed_address, impl.address)
     console.log(`Upgrade ${name} at ${deployed_address} to ${impl.address}`)
 
+    await registerScan(impl, deployer, { name: `Sacred:${name}(impl)`, abi: [] })
     await clearAdmin(impl.address, deployer)
   }
 }
@@ -98,12 +103,11 @@ async function deploySacred(name, token_address, denomination, account, deployer
 async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mode) {
   const register = await Register.deployed()
   let deployed_address = format.address(await register.roles(name), deployer.network_id)
-  console.log(deployed_address)
   let is_deployed = deployed_address != cip37_zero(deployer.network_id)
 
   if (mode == skip_mode && is_deployed) {
     console.log(`${name} has been depolyed at `, deployed_address)
-    return
+    return await Contract.at(deployed_address)
   }
 
   const impl = await deployer.deploy(Contract)
@@ -118,7 +122,11 @@ async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mod
     console.log(`Register ${name} for `, sacred.address)
 
     await confluxTask(sacred, deployer)
+
+    await registerScan(impl, deployer, { name: `${name}(impl)`, abi: [] })
     await clearAdmin(impl.address, deployer)
+
+    return await Contract.at(proxy.address)
   } else {
     // The rest case is deployed + upgrade mode
     const admin = await ProxyAdmin.at(format.address(await register.roles('proxyAdmin'), deployer.network_id))
@@ -127,9 +135,10 @@ async function deployUpgradeable(name, args, Contract, deployer, mode = skip_mod
     await admin.upgrade(deployed_address, impl.address)
     console.log(`Upgrade ${name} at ${deployed_address} to ${impl.address}`)
 
+    await registerScan(impl, deployer, { name: `${name}(impl)`, abi: [] })
     await clearAdmin(impl.address, deployer)
+    return await Contract.at(deployed_address)
   }
-  return await Contract.at(impl.address)
 }
 
 module.exports = { deploySacred, skip_mode, upgrade_mode, overwrite_mode, deployUpgradeable }

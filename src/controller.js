@@ -118,7 +118,13 @@ class Controller {
   }
 
   async reward({ account, note, publicKey, fee = 0, relayer = 0, accountCommitments = null }) {
-    const rate = await methods(this.contract).rates(note.instance).call()
+    var rate = await methods(this.contract).rates(note.instance).call()
+
+    if (typeof rate === 'string' || rate instanceof String) {
+      rate = toHex(rate)
+    } else {
+      rate = format.hex(rate)
+    }
 
     const newAmount = account.amount.add(
       toBN(toHex(rate))

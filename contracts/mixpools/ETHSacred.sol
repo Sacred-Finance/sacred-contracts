@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./Sacred.sol";
 
-contract ETHSacredUpgradeable is SacredUpgradeable {
+contract ETHSacredV1 is SacredV1 {
   function _processDeposit() internal virtual override {
     require(msg.value == denomination, "Please send `mixDenomination` ETH along with transaction");
   }

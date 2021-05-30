@@ -5,7 +5,7 @@ const fs = require('fs')
 const { toBN } = require('web3-utils')
 const { takeSnapshot, revertSnapshot } = require('../scripts/ganacheHelper')
 
-const Sacred = artifacts.require('ERC20SacredUpgradeable')
+const Sacred = artifacts.require('ERC20SacredV1')
 const Register = artifacts.require('Register')
 const BadRecipient = artifacts.require('./BadRecipient.sol')
 const Token = artifacts.require('./ERC20Mock.sol')

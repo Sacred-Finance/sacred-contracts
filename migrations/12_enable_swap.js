@@ -1,5 +1,6 @@
 /* global artifacts */
 const { CFXtoDrip } = require('./conflux_utils.js')
+const { format } = require('js-conflux-sdk')
 const Swap = artifacts.require('RewardSwap')
 const Register = artifacts.require('Register')
 

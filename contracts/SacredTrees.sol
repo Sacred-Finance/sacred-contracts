@@ -9,9 +9,9 @@ import "./interfaces/ISacredTrees.sol";
 import "./interfaces/IHasher.sol";
 
 contract SacredTrees is ISacredTrees {
-  OwnableMerkleTree public immutable depositTree;
-  OwnableMerkleTree public immutable withdrawalTree;
-  OwnableMerkleTree public immutable accountTree;
+  OwnableMerkleTree public depositTree;
+  OwnableMerkleTree public withdrawalTree;
+  OwnableMerkleTree public accountTree;
 
   IHasher public immutable hasher;
 
@@ -28,10 +28,17 @@ contract SacredTrees is ISacredTrees {
   }
 
   address public operator;
+  address public miner;
+
   mapping(address => bool) public sacredAddresses;
 
   modifier onlyOperator {
     require(msg.sender == operator, "Only operator can call this function.");
+    _;
+  }
+
+  modifier onlyMiner {
+    require(msg.sender == miner, "Only operator can call this function.");
     _;
   }
 
@@ -68,7 +75,7 @@ contract SacredTrees is ISacredTrees {
     emit WithdrawalData(_instance, _nullifier, blockNumber(), uint256(index));
   }
 
-  function registerAccount(bytes32 _commitment) external override {
+  function registerAccount(bytes32 _commitment) external override onlyMiner {
     bytes32 leaf = _commitment;
     uint32 index = accountTree.insert(leaf);
     emit AccountData(_commitment, blockNumber(), uint256(index));
@@ -81,6 +88,16 @@ contract SacredTrees is ISacredTrees {
   // Should we allow the operator unset some sacred addresses?
   function unsetSacredAddresses(address sacred) public onlyOperator {
     sacredAddresses[sacred] = false;
+  }
+
+  function setContractStorage(bool _value) public onlyOperator {
+    depositTree.setContractStorage(_value);
+    withdrawalTree.setContractStorage(_value);
+    accountTree.setContractStorage(_value);
+  }
+
+  function setMiner(address _miner) public onlyOperator {
+    miner = _miner;
   }
 
   function validateRoots(

@@ -1,6 +1,7 @@
 /* global artifacts */
 const Migrations = artifacts.require('Migrations')
 const Register = artifacts.require('Register')
+const Memo = artifacts.require('Memo')
 
 const { confluxTask } = require('./conflux_utils.js')
 
@@ -13,5 +14,8 @@ module.exports = async function (deployer) {
     await confluxTask(migration, deployer)
     const register = await deployer.deploy(Register)
     await confluxTask(register, deployer)
+    const memo = await deployer.deploy(Memo)
+    await confluxTask(register, deployer)
+    await register.setRole('memo', memo.address)
   })
 }

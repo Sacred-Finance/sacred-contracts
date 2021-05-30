@@ -1,14 +1,19 @@
+require('dotenv').config({ path: '../.env' })
 const { Conflux, format, Drip } = require('js-conflux-sdk')
 const { gzip } = require('pako')
 const Announcement = artifacts.require('Announcement')
-
-const suffix = '-v1.2'
+const { VERSION } = process.env
+const suffix = `-${VERSION}`
 const announce_addr = 'cfxtest:aca514ancmbdu9u349u4m7d0u4jjdv83py3muarnv1'
 
 const CFXtoDrip = (x) => format.bigUIntHex(Drip.fromCFX(x))
 
 function isZeroAddress(address) {
   return format.hexAddress(address) == '0x0000000000000000000000000000000000000000'
+}
+
+async function isDeployed(role, register) {
+  return !isZeroAddress(await register.roles(role))
 }
 
 function confluxProvider(deployer) {
@@ -52,6 +57,9 @@ async function clearAdmin(instanceAddr, deployer, options = {}) {
 async function registerScan(instance, deployer, options = {}) {
   let { name, abi } = readABI(instance)
   name = options.name || name
+  abi = options.abi || abi
+  moreABI = options.moreABI || []
+  abi = abi.concat(moreABI)
 
   if (deployer.network_id !== 1) {
     console.log("This network doesn't have scan register")
@@ -87,4 +95,4 @@ async function registerScan(instance, deployer, options = {}) {
   console.log('Register functions on Scan for ', instance.address)
 }
 
-module.exports = { confluxTask, clearAdmin, registerScan, CFXtoDrip, isZeroAddress }
+module.exports = { confluxTask, clearAdmin, registerScan, CFXtoDrip, isZeroAddress, isDeployed }

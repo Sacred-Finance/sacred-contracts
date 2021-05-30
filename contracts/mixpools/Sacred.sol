@@ -9,10 +9,12 @@ import "../interfaces/ISacredTrees.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, ReentrancyGuardUpgradeable {
+abstract contract SacredV1 is MerkleTreeWithHistoryUpgradeable, ReentrancyGuardUpgradeable {
   uint256 public denomination;
   uint256 public deposited_balance;
+  IERC20 public token;
 
   using SafeMath for uint256;
 
@@ -31,8 +33,6 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
     uint256 refund;
   }
 
-  // operator can update snark verification key
-  // after the final trusted setup ceremony operator rights are supposed to be transferred to zero address
   address public operator;
   modifier onlyOperator {
     require(msg.sender == operator, "Only operator can call this function.");
@@ -56,7 +56,8 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
     ISacredTrees _logger,
     uint256 _denomination,
     uint32 _merkleTreeHeight,
-    address _operator
+    address _operator,
+    address _token
   ) public initializer {
     MerkleTreeWithHistoryUpgradeable.initialize(_merkleTreeHeight, _hasher);
     __ReentrancyGuard_init();
@@ -65,6 +66,7 @@ abstract contract SacredUpgradeable is MerkleTreeWithHistoryUpgradeable, Reentra
     logger = _logger;
     operator = _operator;
     denomination = _denomination;
+    token = IERC20(_token);
     deposited_balance = 0;
   }
 

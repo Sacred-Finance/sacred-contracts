@@ -321,7 +321,7 @@ async function reward({ noteString, account }) {
   args.extData.encryptedAccount = format.hexBuffer(args.extData.encryptedAccount)
   args.account.inputRoot = format.hexBuffer(args.account.inputRoot)
   args.account.inputNullifierHash = format.hexBuffer(args.account.inputNullifierHash)
-  args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
+  // args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
   args.account.outputCommitment = format.hexBuffer(args.account.outputCommitment)
 
   console.log('Submitting reward transaction')
@@ -359,13 +359,14 @@ async function swapReward({ account, amount, recipient }) {
   args.extData.encryptedAccount = format.hexBuffer(args.extData.encryptedAccount)
   args.account.inputRoot = format.hexBuffer(args.account.inputRoot)
   args.account.inputNullifierHash = format.hexBuffer(args.account.inputNullifierHash)
-  args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
+  // args.account.outputRoot = format.hexBuffer(args.account.outputRoot)
   args.account.outputCommitment = format.hexBuffer(args.account.outputCommitment)
-
-  var txReceipt = await miner.withdraw(proof, args).sendTransaction({ from: senderAccount }).executed()
 
   console.log('You will get ', Drip(await swap.getExpectedReturn(amount)).toCFX(), ' SRD')
   console.log('Sending swap tranaction')
+
+  var txReceipt = await miner.withdraw(proof, args).sendTransaction({ from: senderAccount }).executed()
+
   if (networkId === 1029 || networkId === 1) {
     console.log(
       `View transaction on confluxscan https://${getCurrentNetworkName()}confluxscan.io/transaction/${
@@ -499,10 +500,10 @@ function parseNote(noteString) {
  * Init js-conflux-sdk, contracts, and snark
  */
 async function init({ rpc, noteChainId, currency = 'cfx', amount = '1' }) {
-  const contractJson = require('./build/contracts/CFXSacredUpgradeable.json')
+  const contractJson = require('./build/contracts/CFXSacredV1.json')
   const registerJson = require('./build/contracts/Register.json')
   const erc20ContractJson = require('./build/contracts/ERC20Mock.json')
-  const erc20sacredJson = require('./build/contracts/ERC20SacredUpgradeable.json')
+  const erc20sacredJson = require('./build/contracts/ERC20SacredV1.json')
   const minerJson = require('./build/contracts/Miner.json')
   const loggerJson = require('./build/contracts/SacredTrees.json')
   const swapJson = require('./build/contracts/RewardSwap.json')
